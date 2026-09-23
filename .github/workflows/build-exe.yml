@@ -76,17 +76,24 @@ jobs:
           {
             echo "== artifact tree =="
             find dist -type f -print
+            ls -lh $(find dist -type f -name '*.exe' -print)
             echo "== gh version ==" && gh --version
-            if ! gh release view nightly --repo "$GITHUB_REPOSITORY"; then
-              gh release create nightly --repo "$GITHUB_REPOSITORY" \
-                --target "$GITHUB_SHA" --prerelease \
-                --title "J.A.R.V.I.S. — Nightly Build" --notes "Build in progress…"
-            fi
+            # Recreate the nightly release from scratch: half-finished asset
+            # rows ("starter" state) reserve names without ever appearing in
+            # the asset list — a clean slate avoids that trap entirely.
+            gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
             FILES=$(find dist -type f -name '*.exe' -print | sort)
             echo "== exe files ==" && echo "$FILES"
+            gh release create nightly --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --prerelease \
+              --title "J.A.R.V.I.S. — Nightly Build" \
+              --notes "Standalone Windows builds of J.A.R.V.I.S."
             if [ -n "$FILES" ]; then
-              gh release upload nightly --repo "$GITHUB_REPOSITORY" --clobber $FILES
-              echo "upload exit: $?"
+              for f in $FILES; do
+                echo "-- uploading $f"
+                gh release upload nightly --repo "$GITHUB_REPOSITORY" --clobber "$f"
+                echo "upload exit: $? for $f"
+              done
             else
               echo "NO EXE FILES FOUND"
             fi
