@@ -198,12 +198,14 @@ CI does exactly this on `windows-latest` for every push — see
 
 | Symptom | Fix |
 | --- | --- |
+| **The .exe won't open / nothing happens** | 1) Right-click the exe → **Properties** → tick **Unblock** → Apply (Windows marks downloads as unsafe). 2) If you see *"Windows protected your PC"* → **More info → Run anyway**. 3) Check **Windows Security → Protection history** — antivirus tools false-positive on app-automation code; allow it or add this folder as an exclusion. 4) Run **JARVIS-Doctor.bat** (next to the exe) — it explains and diagnoses everything. |
+| Error dialog on startup | The dialog shows the exact failure. `JARVIS-CRASH.txt` is saved next to the exe and `%LOCALAPPDATA%\JARVIS\logs\boot.log` has the full boot trace — send me either. |
 | *“Ollama is not responding”* | Start Ollama (system tray / `ollama serve`), or press **START OLLAMA** in the wizard. Check `http://localhost:11434`. |
 | *“The model … is not installed”* | `ollama pull llama3.2` — or pick another model in *Configuration*. |
 | No voice input | Check Windows microphone privacy settings (*Settings → Privacy → Microphone*). Lite build needs Windows speech recognition (add a speech language pack if dictation returns nothing). |
 | JARVIS refuses a reasonable request | By design it refuses logins, credentials and destructive acts. Rephrase, or do that part yourself. |
 | An action needed confirmation and timed out | It is treated as declined — just ask again. |
-| The exe won't start | Install the [VC++ 2015-2022 x64 redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) (normally already present). |
+| The exe won't start | Install the [VC++ 2015-2022 x64 redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) (normally already present). Then run **JARVIS-Doctor.bat** and follow section 7. |
 | Everything else | `%LOCALAPPDATA%\JARVIS\logs\jarvis.log` — and the Activity Log panel in the HUD. |
 
 ## Commands the assistant will never run

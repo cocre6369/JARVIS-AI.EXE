@@ -206,6 +206,19 @@ class JarvisHUD(tk.Tk):
         self._state = "IDLE"
         theme.style_ttk(self)
 
+        # Surface Tk callback errors instead of losing them in the void.
+        def _cb_error(exc, val, tb):
+            import traceback as _tb
+
+            detail = "".join(_tb.format_exception(exc, val, tb))[-1200:]
+            try:
+                self.core.log("error", f"UI error: {val}")
+            except Exception:
+                pass
+            self.narrate("A UI glitch occurred — see the activity log.")
+
+        self.report_callback_exception = _cb_error
+
         self._build()
         self._pump()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
