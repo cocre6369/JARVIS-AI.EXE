@@ -53,8 +53,7 @@ Prefer to build it yourself? One double-click: `build_exe.bat` (see below).
 1. **Install [Ollama](https://ollama.com/download)** on the PC you want to
    control and pull a model:
    ```bash
-   ollama pull llama3.2        # fast, good for commands
-   # or: ollama pull llama3.1:8b / mistral-nemo / qwen2.5:7b
+   ollama pull qwen3:8b        # smartest small brain for commands (default)
    ```
 2. **Download `JARVIS-AI.exe`** and double-click it.
 3. **The first-run wizard** checks Ollama, lets you pick/pull a model, tests
@@ -63,6 +62,23 @@ Prefer to build it yourself? One double-click: `build_exe.bat` (see below).
 4. **Talk to Jarvis.** Type a command, or hold **🎤 HOLD TO TALK** and speak.
 
 > The setup wizard also lives in the menu bar → *Run setup wizard…* at any time.
+
+## Which model makes Jarvis smart?
+
+The assistant is only as sharp as the local model behind it. Swap any time in
+**☰ → Configuration → Local model tag** (then talk again — no restart needed).
+
+| Your hardware | Pull this | Jarvis-level |
+| --- | --- | --- |
+| **8 GB+ RAM / any GPU** | `ollama pull qwen3:8b` | **Recommended.** Sharp tool use, reliable chains — the default |
+| **12 GB+ GPU** | `ollama pull qwen3:14b` | Noticeably smarter planning, slower |
+| Weak / old PC | `ollama pull llama3.2` | Fastest, but expect more mistakes |
+| Pure tool reliability | `ollama pull llama3-groq-tool-use:8b` | Purpose-built function-caller |
+| Beast (24 GB+ GPU) | `ollama pull qwen3:30b-a3b` | Big-model behaviour, small-model speed |
+
+*(`qwen3:8b` needs roughly 6–8 GB of RAM/VRAM in use. `llama3.2` — what early
+builds shipped with — is a 3B-speed model and is the usual cause of "the AI is
+dumb".)*
 
 ## Example commands
 

@@ -52,7 +52,7 @@ class Settings:
 
     # Identity / model
     user_name: str = "sir"                 # how JARVIS addresses you ("sir", "boss", "Alex"...)
-    model: str = "llama3.2"                # default Ollama model tag
+    model: str = "qwen3:8b"                # default Ollama model tag
     ollama_url: str = "http://localhost:11434"
 
     # Voice

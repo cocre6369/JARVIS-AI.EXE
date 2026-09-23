@@ -71,7 +71,7 @@ class OllamaClient:
 
     # ---------------- chat ----------------
     def chat(self, model: str, messages: List[Dict[str, str]],
-             temperature: float = 0.4) -> str:
+             temperature: float = 0.2) -> str:
         payload = {
             "model": model,
             "messages": messages,

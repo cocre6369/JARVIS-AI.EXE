@@ -116,7 +116,7 @@ jobs:
               "- **JARVIS-AI.exe** — full build (Whisper voice recognition bundled)" \
               "- **JARVIS-AI-Lite.exe** — lite build (Windows speech recognition)" \
               "" "### Quick start" \
-              "1. Install [Ollama](https://ollama.com/download) and run: \`ollama pull llama3.2\`" \
+              "1. Install [Ollama](https://ollama.com/download) and run: \`ollama pull qwen3:8b\`" \
               "2. Download the .exe above and double-click it" \
               "3. Follow the first-run wizard (model pick, voice test, safety limits)" \
               "" "Guardrails are enforced in code: no logins, no credentials, confirmations before sensitive actions, STOP always available." \

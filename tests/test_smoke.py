@@ -129,6 +129,36 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(s2.model, "llama3.2:3b")
 
 
+class TestAppResolver(unittest.TestCase):
+    """The launcher must understand apps 'like a human': aliases, typos,
+    filler words — the failure the user reported ('open spotify' not found)
+    must not recur."""
+
+    def test_alias_typo_and_fuzzy_resolution(self):
+        from jarvis.skills.apps import canonical_for, suggestions_for
+
+        self.assertEqual(canonical_for("Spotify"), "spotify")
+        self.assertEqual(canonical_for("spotify.exe"), "spotify")
+        self.assertEqual(canonical_for("spotifi"), "spotify")       # typo
+        self.assertEqual(canonical_for("spotfy"), "spotify")        # typo
+        self.assertEqual(canonical_for("the spotify app"), "spotify")  # filler
+        self.assertEqual(canonical_for("google chrome"), "chrome")
+        self.assertEqual(canonical_for("vs code"), "code")
+        self.assertEqual(canonical_for("visual studio code"), "code")
+        self.assertEqual(canonical_for("calculator"), "calc")
+        self.assertEqual(canonical_for("task manager"), "taskmgr")
+        self.assertEqual(canonical_for("my files"), "explorer")
+        self.assertIsNone(canonical_for("quantum flux capacitor"))
+        self.assertTrue(suggestions_for("spotfy"))
+
+    def test_known_paths_cover_spotify(self):
+        from jarvis.skills.apps import CANONICAL
+
+        paths = " ".join(CANONICAL["spotify"]["paths"]).lower()
+        self.assertIn("spotify", paths)
+        self.assertTrue(CANONICAL["spotify"]["processes"])
+
+
 class TestCoreLogging(unittest.TestCase):
     """Regression: JarvisCore.log() must accept extra kwargs (source=...).
     The old signature killed every submitted command after transcription."""

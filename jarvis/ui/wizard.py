@@ -146,13 +146,14 @@ class FirstRunWizard(tk.Toplevel):
                                    fg=theme.TEXT, insertbackground=theme.CYAN,
                                    relief="flat", highlightthickness=1,
                                    highlightbackground=theme.BORDER)
-        self.pull_entry.insert(0, "llama3.2")
+        self.pull_entry.insert(0, "qwen3:8b")
         self.pull_entry.pack(side="left", fill="x", expand=True, ipady=4)
         theme.styled_button(pull, "PULL", self._pull_model, "gold").pack(
             side="left", padx=6)
         self.pull_status = tk.Label(self.body, text=(
-            "Recommended: llama3.2 (fast) · llama3.1:8b · mistral-nemo · "
-            "qwen2.5:7b"), font=theme.FONT_SMALL, bg=theme.BG,
+            "Smartest for commands: qwen3:8b (or qwen3:14b on 12GB+ GPU) · "
+            "Pure tool specialist: llama3-groq-tool-use:8b · "
+            "Lightest: llama3.2"), font=theme.FONT_SMALL, bg=theme.BG,
             fg=theme.MUTED, wraplength=540, justify="left")
         self.pull_status.pack(fill="x", pady=6)
         threading.Thread(target=self._fetch_models, daemon=True).start()
