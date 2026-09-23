@@ -78,16 +78,21 @@ jobs:
             find dist -type f -print
             ls -lh $(find dist -type f -name '*.exe' -print)
             echo "== gh version ==" && gh --version
-            # Recreate the nightly release from scratch: half-finished asset
-            # rows ("starter" state) reserve names without ever appearing in
-            # the asset list — a clean slate avoids that trap entirely.
-            gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
             FILES=$(find dist -type f -name '*.exe' -print | sort)
             echo "== exe files ==" && echo "$FILES"
-            gh release create nightly --repo "$GITHUB_REPOSITORY" \
-              --target "$GITHUB_SHA" --prerelease \
-              --title "J.A.R.V.I.S. — Nightly Build" \
-              --notes "Standalone Windows builds of J.A.R.V.I.S."
+            COUNT=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/nightly" --jq '.assets | length' 2>/dev/null || echo 0)
+            if [ "$COUNT" -ge 1 ]; then
+              # healthy release — replace assets in place
+              echo "healthy release with $COUNT assets, overwriting"
+            else
+              # no visible assets: either fresh repo or zombie 'starter' rows
+              # that reserve names without completing — recreate clean.
+              echo "no visible assets — recreating release"
+              gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+              gh release create nightly --repo "$GITHUB_REPOSITORY" \
+                --target "$GITHUB_SHA" --prerelease \
+                --title "J.A.R.V.I.S. — Nightly Build" --notes "Build in progress…"
+            fi
             if [ -n "$FILES" ]; then
               for f in $FILES; do
                 echo "-- uploading $f"
@@ -102,10 +107,21 @@ jobs:
               --jq '{assets: [.assets[] | {name, size}]}'
           } > /tmp/diag.txt 2>&1
           cat /tmp/diag.txt
-          # surface diagnostics in the release notes (which we can verify)
+          # clean, user-facing notes with collapsed build telemetry
           gh release edit nightly --repo "$GITHUB_REPOSITORY" \
             --title "J.A.R.V.I.S. — Nightly Build" \
-            --notes "$(printf '%s\n' "Standalone Windows builds of J.A.R.V.I.S." "" '```' "$(tail -c 1800 /tmp/diag.txt)" '```')" \
+            --notes "$(printf '%s\n' \
+              "Standalone Windows builds of **J.A.R.V.I.S.** — the Iron Man themed, fully local, Ollama-powered desktop assistant." \
+              "" "### Downloads" \
+              "- **JARVIS-AI.exe** — full build (Whisper voice recognition bundled)" \
+              "- **JARVIS-AI-Lite.exe** — lite build (Windows speech recognition)" \
+              "" "### Quick start" \
+              "1. Install [Ollama](https://ollama.com/download) and run: \`ollama pull llama3.2\`" \
+              "2. Download the .exe above and double-click it" \
+              "3. Follow the first-run wizard (model pick, voice test, safety limits)" \
+              "" "Guardrails are enforced in code: no logins, no credentials, confirmations before sensitive actions, STOP always available." \
+              "" "Built from commit \`$GITHUB_SHA\`" \
+              "" "<details><summary>Build telemetry</summary>" "" '```' "$(tail -c 1600 /tmp/diag.txt)" '```' "" "</details>")" \
             || echo "notes edit failed"
           # hard-fail unless at least one asset is attached
           COUNT=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/nightly" --jq '.assets | length')
