@@ -317,7 +317,8 @@ class JarvisHUD(tk.Tk):
         self.state_label.pack(pady=2)
         self.narration = tk.Label(left, text="All systems nominal.",
                                   font=theme.FONT_SMALL, bg=theme.PANEL,
-                                  fg=theme.MUTED, wraplength=200, minheight=34)
+                                  fg=theme.MUTED, wraplength=200, height=3,
+                                  justify="left")
         self.narration.pack(pady=6, padx=10)
         sep = tk.Frame(left, bg=theme.BORDER, height=1)
         sep.pack(fill="x", padx=14, pady=10)
