@@ -159,6 +159,54 @@ class TestAppResolver(unittest.TestCase):
         self.assertTrue(CANONICAL["spotify"]["processes"])
 
 
+class TestSmartTypingPolicy(unittest.TestCase):
+    """Regression for the user report: 'open spotify and play violent crimes
+    by kanye west' must type the query and press enter WITHOUT confirmation —
+    only private/crucial text still asks."""
+
+    def test_ordinary_typing_is_instant(self):
+        from jarvis.guardrails import (POLICY_AUTO, looks_crucial_text,
+                                       policy_for)
+
+        for text in ("violent crimes kanye west", "Marques Brownlee",
+                     "lofi hip hop", "some search? q=1"):
+            self.assertFalse(looks_crucial_text(text), text)
+            self.assertEqual(
+                policy_for("type_text", {"text": text}, POLICY_AUTO),
+                POLICY_AUTO, text)
+
+    def test_enter_and_navigation_keys_are_instant(self):
+        from jarvis.guardrails import POLICY_AUTO, POLICY_CONFIRM, policy_for
+
+        for keys in ("enter", "tab", "down", "ctrl+f", "playpause"):
+            self.assertEqual(
+                policy_for("press_keys", {"keys": keys}, POLICY_AUTO),
+                POLICY_AUTO, keys)
+        self.assertEqual(
+            policy_for("press_keys", {"keys": "alt+f4"}, POLICY_AUTO),
+            POLICY_CONFIRM)
+
+    def test_crucial_text_still_asks(self):
+        from jarvis.guardrails import (POLICY_AUTO, POLICY_CONFIRM,
+                                       looks_crucial_text, policy_for)
+
+        letter = "Hi Priya,\n\nThanks for lunch. See you at six.\n\nTom"
+        self.assertTrue(looks_crucial_text(letter))
+        self.assertEqual(policy_for("type_text", {"text": letter}, POLICY_AUTO),
+                         POLICY_CONFIRM)
+        mail = "write to alex@example.com about the meeting"
+        self.assertTrue(looks_crucial_text(mail))
+        essay = "It is a truth universally acknowledged " * 8
+        self.assertTrue(looks_crucial_text(essay))
+
+    def test_card_numbers_hard_blocked(self):
+        from jarvis.guardrails import check_tool_call
+
+        v = check_tool_call("type_text", {"text": "4111 1111 1111 1111"},
+                            ["type_text"])
+        self.assertFalse(v.ok)
+
+
 class TestCoreLogging(unittest.TestCase):
     """Regression: JarvisCore.log() must accept extra kwargs (source=...).
     The old signature killed every submitted command after transcription."""

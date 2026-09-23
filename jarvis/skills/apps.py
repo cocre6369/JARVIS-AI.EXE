@@ -622,9 +622,10 @@ def volume_mute(mode: str = "toggle") -> str:
 
 
 # ------------------------------------------------------------- typing -----
-@register("type_text", "Type text visibly into whatever field/window has focus "
-          "(asks the user first). Never used for passwords.", "{text}",
-          policy=POLICY_CONFIRM)
+@register("type_text", "Type text visibly into whatever field/window has focus. "
+          "Ordinary input (searches, song titles, channel names) types straight "
+          "away; long/multi-line or private-looking text asks first. Never used "
+          "for passwords.", "{text}")
 def type_text(text: str) -> str:
     if os.name != "nt":
         return "ERROR: typing is only supported on Windows."
@@ -669,7 +670,8 @@ def _paste_text(text: str) -> None:
 
 
 @register("press_keys", "Press a key combo from the safe list (enter, tab, "
-          "ctrl+f, alt+tab, media keys...).", "{keys}", policy=POLICY_CONFIRM)
+          "ctrl+f, alt+tab, media keys...) — navigation keys just happen; "
+          "window-closing combos ask first.", "{keys}")
 def press_keys(keys: str) -> str:
     if os.name != "nt":
         return "ERROR: key input is only supported on Windows."

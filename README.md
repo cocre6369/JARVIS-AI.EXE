@@ -137,6 +137,11 @@ them because *there is no tool that can*:
   writing files, anything touching personal folders) require **explicit
   on-screen confirmation**. File deletion additionally requires you to *type*
   `DELETE` — and goes to the Recycle Bin, never permanent.
+- ⌨️ **Smart typing confirmations** — everyday on-screen input just happens:
+  searches, song names, YouTube channels, pressing Enter. Confirmation is
+  requested only for *private or crucial* text (long or multi-line messages,
+  emails) and key combos that close windows. Strict mode (Settings) restores
+  confirm-everything.
 - ✉️ **Email is draft-only.** JARVIS prepares the reply in your already-signed-in
   Outlook and displays it. *You* press Send.
 - 👁️ **All automation is visible** — typed keys, opened windows, narrated

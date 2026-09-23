@@ -200,7 +200,10 @@ class FirstRunWizard(tk.Toplevel):
             "   ✕  delete or move your files without your explicit approval\n"
             "   ✕  send email — I only prepare drafts for YOUR review")
         self._text("\nEvery sensitive action asks for your explicit on-screen "
-                   "confirmation first, and STOP (or Esc) halts me instantly.")
+                   "confirmation first, and STOP (or Esc) halts me instantly. "
+                   "Ordinary on-screen typing — a search, a song, a channel — "
+                   "happens immediately; I only ask when the text is private "
+                   "or crucial (messages, emails, long passages).")
         self._text("\nYou are always in control: the mic only listens while you "
                    "hold the button (or Ctrl+Alt+Space), and Ctrl+Alt+P puts "
                    "me fully in standby at any moment — mic off, speech off, "

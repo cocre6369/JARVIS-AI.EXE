@@ -73,6 +73,22 @@ _CRED_PAYLOAD = re.compile(
     re.IGNORECASE,
 )
 
+#: Bare card/account-style digit runs — payment data is never handled.
+_CARD_LIKE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+
+#: Free text that is *private or crucial* (messages, emails, essays...) and
+#: therefore still gets a confirmation. Ordinary input — song titles, search
+#: terms, channel names — does NOT.
+_CRUCIAL_TEXT = re.compile(r"[\n\r]|@|https?://\S*\?", re.IGNORECASE)
+
+
+def looks_crucial_text(text: str) -> bool:
+    """True when typed content deserves a confirmation: multi-line (letters /
+    messages / posts), long essays, or anything with email addresses."""
+    t = text or ""
+    return bool(_CRUCIAL_TEXT.search(t)) or len(t) > 180
+
+
 _ALLOWED_URL_SCHEMES = {"http", "https"}
 
 _APP_NAME_RE = re.compile(r"^[\w .+\-()'&]{1,80}$", re.UNICODE)
@@ -124,6 +140,9 @@ def check_tool_call(name: str, args: Dict[str, Any], registry_names: List[str]) 
     joined = " ".join(str(v) for v in args.values())
     if looks_sensitive(joined):
         return Verdict(False, "credential-like content in arguments", POLICY_DENY)
+    if _CARD_LIKE.search(joined):
+        return Verdict(False, "payment card/account numbers are never handled",
+                       POLICY_DENY)
     if _CRED_HANDLING.search(joined):
         return Verdict(False, "credential handling in arguments", POLICY_DENY)
 
@@ -188,7 +207,10 @@ def check_path(path: str) -> Verdict:
 
 
 #: Minimum policy per tool — enforced here as defence in depth, so even a
-#: mis-registered skill cannot run these without confirmation.
+#: mis-registered skill cannot run these without confirmation. Ordinary
+#: on-screen interaction (typing searches/song titles, pressing enter) is
+#: deliberately NOT listed: confirmations are reserved for private or
+#: crucial effects (files, email, closing apps, sensitive captures).
 _MIN_POLICY = {
     "file_read": POLICY_CONFIRM,
     "file_list": POLICY_CONFIRM,
@@ -196,18 +218,12 @@ _MIN_POLICY = {
     "file_delete": POLICY_DOUBLE,
     "open_folder": POLICY_CONFIRM,
     "close_app": POLICY_CONFIRM,
-    "type_text": POLICY_CONFIRM,
-    "press_keys": POLICY_CONFIRM,
     "screenshot": POLICY_CONFIRM,
     "clipboard_read": POLICY_CONFIRM,
     "clipboard_set": POLICY_CONFIRM,
     "email_compose": POLICY_CONFIRM,
     "email_reply_draft": POLICY_CONFIRM,
     "email_read_selected": POLICY_CONFIRM,
-    "timer_set": POLICY_CONFIRM,
-    "reminder_set": POLICY_CONFIRM,
-    "cancel_reminder": POLICY_CONFIRM,
-    "remember": POLICY_CONFIRM,
 }
 
 _POLICY_RANK = {POLICY_AUTO: 0, POLICY_CONFIRM: 1, POLICY_DOUBLE: 2, POLICY_DENY: 3}
@@ -228,6 +244,11 @@ def policy_for(tool_name: str, args: Dict[str, Any], base_policy: str,
     if tool_name == "press_keys":
         combo = str(args.get("keys", "")).strip().lower().replace(" ", "")
         if combo in _KEYS_NEEDING_CONFIRM:
+            policy = _stricter(policy, POLICY_CONFIRM)
+    if tool_name == "type_text":
+        # Everyday input (searches, song names, titles) just happens;
+        # private/crucial text (messages, emails, long passages) still asks.
+        if looks_crucial_text(str(args.get("text", ""))):
             policy = _stricter(policy, POLICY_CONFIRM)
     if tool_name == "file_write":
         import os
