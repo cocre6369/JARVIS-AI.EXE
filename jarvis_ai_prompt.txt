@@ -1,0 +1,115 @@
+PROJECT PROMPT: Local "Jarvis-Style" Desktop AI Assistant (.exe)
+
+OVERVIEW
+Build a Windows desktop application (packaged as a standalone .exe) that acts as a
+Jarvis-style personal AI assistant. It runs locally using Ollama and a locally
+installed LLM (e.g. llama3, mistral, or similar) to interpret natural-language
+commands and control the user's computer in real time. The assistant should feel
+conversational and proactive, similar to a sci-fi AI companion, while staying
+fully local and privacy-respecting — no cloud AI calls, no data leaving the
+machine except normal web browsing the assistant performs on the user's behalf.
+
+CORE FUNCTIONALITY
+- Accepts input via TEXT or VOICE (speech-to-text for voice, TTS for spoken
+  replies), with an easy toggle or hotkey to switch modes mid-session.
+- Uses a local Ollama model as the reasoning/command engine to parse intent,
+  plan multi-step actions, and decide which tool/action to invoke.
+- Understands open-ended natural language requests (not a fixed command list) and
+  maps them to real actions on the machine, for example:
+  - Open a website/app and perform an action (e.g. "open YouTube and play a video
+    from [creator]")
+  - Draft or reply to an email in an already-logged-in mail client
+  - Open, close, resize, or switch between applications and browser tabs
+  - Perform web searches, read back information, or summarize on-screen content
+  - Control media playback (play/pause/skip/volume) in open apps
+  - Set reminders, timers, or read back the current schedule if a calendar app
+    is open
+  - Chain multiple steps together from a single request (e.g. "open Spotify,
+    play my daily mix, then open my notes app")
+- Executes actions in real time, narrating what it's doing step-by-step, and
+  gives a spoken/text confirmation once each action or chain of actions completes.
+- Maintains short-term conversational context so follow-up commands like "now
+  pause it" or "undo that" work without repeating the full request.
+- Persistent lightweight UI (system tray icon or small always-on-top overlay/
+  window) showing assistant status (listening / thinking / acting / idle) with a
+  toggle between text-input mode and voice-input mode, plus a visible activity
+  log of recent actions taken.
+
+ARCHITECTURE / TECHNICAL REQUIREMENTS
+- Backend: Python (or similar) orchestrating:
+  - Ollama API calls to the local model for intent parsing, reasoning, and
+    generating a structured action plan (e.g. JSON describing the tool + params)
+  - A "tool" or "skill" layer that translates structured actions into OS-level
+    automation (e.g. pyautogui, subprocess, keyboard/mouse control, window
+    management via pywin32 or similar) so the model's output maps cleanly to
+    safe, whitelisted functions rather than arbitrary code execution
+  - Speech-to-text (e.g. Whisper or a lightweight local STT) for voice input
+  - Text-to-speech (e.g. a local TTS engine) for spoken responses
+  - A lightweight local config/state store (e.g. SQLite or JSON) for user
+    preferences, recent activity log, and any reminders/timers
+- Frontend: minimal UI framework (e.g. a small Tkinter/PyQt overlay, or an
+  Electron-style shell if preferred) — kept lightweight so it doesn't compete
+  with the local LLM for system resources.
+- Packaged into a single distributable .exe (e.g. via PyInstaller) with a simple
+  first-run setup wizard that:
+  - Checks whether Ollama is installed, and if not, guides the user through
+    installing it and pulling the chosen model
+  - Lets the user pick/confirm which local model to use based on their hardware
+  - Requests microphone and automation permissions as needed
+- Should run fully offline aside from normal web browsing actions it performs on
+  the user's behalf.
+- Design the action/tool layer to be modular so new capabilities (new "skills")
+  can be added later without retraining or reprompting the core model logic.
+
+LIMITATIONS / GUARDRAILS (must be enforced in the design, not just prompted)
+- Must NEVER log in or sign up to any account, service, or website on the user's
+  behalf.
+- Must NEVER enter, store, or handle passwords, payment info, or other
+  credentials, and must refuse requests that would require doing so.
+- Must NOT browse into, open, move, rename, or delete personal folders/files
+  without explicit user verification/confirmation first.
+- Must NOT perform destructive or irreversible actions (deleting files, changing
+  system settings, uninstalling software, modifying other apps' data) without
+  explicit, per-action user confirmation.
+- Should only act within applications/sites the user is already logged into —
+  never attempt to bypass authentication.
+- Should ask for confirmation before any action that is ambiguous, irreversible,
+  spans sensitive data, or affects files/settings outside of simple app/browser
+  navigation and on-screen interaction.
+- Should clearly state when it cannot safely complete a request instead of
+  guessing or forcing an action through.
+- All automation should run with visible on-screen feedback (cursor movement,
+  narrated steps) rather than silent background control, so the user can always
+  see and interrupt what it's doing.
+- Include an always-available "stop/abort" hotkey or button that immediately
+  halts any in-progress automation.
+
+USER EXPERIENCE NOTES
+- Keep responses conversational but concise — confirm actions without being
+  overly chatty.
+- Support a wake word or hotkey for voice activation so the assistant isn't
+  always listening.
+- Provide clear visual/audio feedback for each state: listening, processing,
+  executing, done, or error/blocked.
+
+DELIVERABLE
+A complete, production-ready application — not a demo or proof-of-concept.
+It must:
+- Install and run as a standalone .exe on a normal Windows machine with no
+  manual code setup required from the user beyond the first-run wizard
+  (installing/confirming Ollama and pulling the chosen model).
+- Reliably handle the full loop end-to-end every time: voice or text command →
+  local model interpretation and action planning → real-time, narrated action
+  performed on screen (e.g. opening a browser, navigating to a site, or
+  interacting with an open application) → confirmation response to the user.
+- Handle errors gracefully (e.g. Ollama not running, model not installed,
+  ambiguous command, action fails mid-way) with clear messages and safe
+  recovery rather than crashing.
+- Enforce all guardrails above at all times, not just in a demo scenario —
+  including refusing or asking for confirmation when a request crosses one of
+  the stated limitations.
+- Be stable enough for daily, repeated use: persist settings and activity log
+  across restarts, avoid memory leaks or hanging background processes, and
+  clean up properly on exit.
+- Include basic setup documentation (a short README) covering installation,
+  first-run configuration, supported commands/examples, and troubleshooting.
