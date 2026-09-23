@@ -208,11 +208,14 @@ class SpeechToText:
         return path
 
     # ---------------- transcription ----------------
-    def _get_whisper(self):
+    def _get_whisper(self, on_status=None):
         want = self.settings.whisper_model or "base.en"
         with self._model_lock:
             if self._whisper is not None and self._whisper_name == want:
                 return self._whisper
+            if on_status:
+                on_status(f"Loading speech model '{want}' — first use "
+                          "downloads it (one time only)…")
             from faster_whisper import WhisperModel  # type: ignore
 
             models = data_dir() / "models"
@@ -222,10 +225,16 @@ class SpeechToText:
             self._whisper_name = want
             return self._whisper
 
-    def _transcribe_whisper(self, wav_path: Path) -> str:
+    def preload(self, on_status=None) -> None:
+        """Download + load the speech model ahead of the first voice command."""
+        if (self.settings.stt_engine or "auto") in ("auto", "whisper") \
+                and has_whisper():
+            self._get_whisper(on_status=on_status)
+
+    def _transcribe_whisper(self, wav_path: Path, on_status=None) -> str:
         import numpy as np
 
-        model = self._get_whisper()
+        model = self._get_whisper(on_status=on_status)
         with wave.open(str(wav_path), "rb") as wf:
             frames = wf.readframes(wf.getnframes())
         audio = np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32768.0
@@ -256,19 +265,18 @@ class SpeechToText:
         if wav is None:
             return ""
         if on_status:
-            on_status("transcribing")
+            on_status("Transcribing…")
 
         if engine in ("auto", "whisper") and has_whisper():
             try:
-                text = self._transcribe_whisper(wav)
+                text = self._transcribe_whisper(wav, on_status=on_status)
                 if text:
                     return text
             except Exception:
-                if engine == "whisper":
-                    return ""
-        if engine in ("auto", "windows"):
-            return self._transcribe_windows_speech(wav)
-        return ""
+                if engine == "whisper" and on_status:
+                    on_status("Speech model failed — trying Windows speech…")
+        # Windows built-in speech is the reliable fallback (or the lite pick).
+        return self._transcribe_windows_speech(wav)
 
 
 def check_wake_word(text: str, wake: str) -> bool:

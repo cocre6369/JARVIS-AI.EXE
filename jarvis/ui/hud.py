@@ -211,11 +211,16 @@ class JarvisHUD(tk.Tk):
             import traceback as _tb
 
             detail = "".join(_tb.format_exception(exc, val, tb))[-1200:]
+            core = getattr(self, "core", None)
+            if core is not None:
+                try:
+                    core.log("error", f"UI error: {val}")
+                except Exception:
+                    pass
             try:
-                self.core.log("error", f"UI error: {val}")
+                self.narrate("A UI glitch occurred — see the activity log.")
             except Exception:
                 pass
-            self.narrate("A UI glitch occurred — see the activity log.")
 
         self.report_callback_exception = _cb_error
 
@@ -236,6 +241,8 @@ class JarvisHUD(tk.Tk):
         self.deiconify()
         self._tick_clock()
         self.entry.focus_set()
+        # Pre-warm the speech engine so the first voice command is instant.
+        self.after(2500, self.core.preload_speech)
 
         if not self.settings.first_run_done:
             self.after(700, self.run_wizard)

@@ -129,6 +129,58 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(s2.model, "llama3.2:3b")
 
 
+class TestCoreLogging(unittest.TestCase):
+    """Regression: JarvisCore.log() must accept extra kwargs (source=...).
+    The old signature killed every submitted command after transcription."""
+
+    def test_log_accepts_source_kwarg(self):
+        from jarvis.app import JarvisCore
+
+        class FakeUI:
+            def call(self, fn, *a):
+                try:
+                    fn(*a)
+                except Exception:
+                    pass
+
+            def add_message(self, *a):
+                pass
+
+            def set_state(self, s):
+                pass
+
+            def narrate(self, t):
+                pass
+
+            def set_level(self, l):
+                pass
+
+            def notify(self, t):
+                pass
+
+            def flash_alert(self, t):
+                pass
+
+            def set_enabled(self, e):
+                pass
+
+            def confirm(self, t, m):
+                return False
+
+            def confirm_typed(self, t, m, w):
+                return False
+
+            def open_settings(self):
+                pass
+
+        core = JarvisCore(FakeUI(), Settings())
+        core.log("user", "hello", source="text")     # must not raise
+        core.log("user", "hello again", source="voice")
+        core.submit("open notepad", source="text")   # dispatch must start
+        assert core.log
+        core.shutdown()
+
+
 class TestSkills(unittest.TestCase):
     def test_catalog_and_dispatch(self):
         from jarvis import skills

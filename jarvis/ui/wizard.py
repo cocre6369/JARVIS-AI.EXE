@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import threading
+import time
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING, List
@@ -60,6 +61,24 @@ class FirstRunWizard(tk.Toplevel):
     def _clear(self) -> None:
         for w in self.body.winfo_children():
             w.destroy()
+
+    def _alive(self, fn, *args):
+        """Run fn on the UI thread — but only if this wizard still exists.
+        Prevents 'invalid command name' when a background check lands after
+        the wizard was closed."""
+        import tkinter as tk
+
+        def run():
+            try:
+                if self.winfo_exists():
+                    fn(*args)
+            except tk.TclError:
+                pass
+
+        try:
+            self.after(0, run)
+        except tk.TclError:
+            pass
 
     def _text(self, content: str, **kw) -> None:
         tk.Label(self.body, text=content, font=theme.FONT_UI, bg=theme.BG,
@@ -258,6 +277,9 @@ class FirstRunWizard(tk.Toplevel):
         self.ollama_status.configure(text="Checking for Ollama…", fg=theme.GOLD)
         client = self.hud.core.client
 
+        def set_status(msg, color):
+            self._alive(lambda: self.ollama_status.configure(text=msg, fg=color))
+
         def work():
             installed = client.is_installed()
             running = client.is_running()
@@ -278,8 +300,7 @@ class FirstRunWizard(tk.Toplevel):
                 msg = ("✕ Ollama not found. Install it from "
                        "https://ollama.com/download then press CHECK AGAIN.")
                 color = theme.RED
-            self.after(0, lambda: self.ollama_status.configure(
-                text=msg, fg=color))
+            set_status(msg, color)
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -289,7 +310,11 @@ class FirstRunWizard(tk.Toplevel):
             text=("Starting Ollama in the background…" if ok
                   else "Couldn't launch 'ollama serve' — is Ollama installed?"),
             fg=theme.GOLD if ok else theme.RED)
-        self.after(2500, self._check_ollama)
+        self._alive(self._check_ollama)
+        # and once more after the service has had a moment to come up
+        threading.Thread(
+            target=lambda: (time.sleep(3), self._alive(self._check_ollama)),
+            daemon=True).start()
 
     def _open_download(self) -> None:
         import webbrowser
@@ -301,10 +326,12 @@ class FirstRunWizard(tk.Toplevel):
             self.models = self.hud.core.client.list_models()
         except Exception:
             self.models = []
+
         def apply():
             if self.models:
                 self.model_box.configure(values=self.models)
-        self.after(0, apply)
+
+        self._alive(apply)
 
     def _pull_model(self) -> None:
         name = self.pull_entry.get().strip()
@@ -313,18 +340,19 @@ class FirstRunWizard(tk.Toplevel):
         self.pull_status.configure(text=f"Pulling {name}…", fg=theme.GOLD)
         client = self.hud.core.client
 
+        def set_status(msg, color):
+            self._alive(lambda: self.pull_status.configure(text=msg, fg=color))
+
         def work():
             try:
                 client.pull_model(
-                    name, on_progress=lambda s: self.after(
-                        0, lambda: self.pull_status.configure(
-                            text=f"{name}: {s}", fg=theme.CYAN_TEXT)))
-                self.after(0, lambda: self.pull_status.configure(
-                    text=f"✓ {name} ready.", fg=theme.GREEN))
-                self.after(0, self._fetch_models)
+                    name,
+                    on_progress=lambda s: set_status(f"{name}: {s}",
+                                                     theme.CYAN_TEXT))
+                set_status(f"✓ {name} ready.", theme.GREEN)
+                self._alive(self._fetch_models)
             except Exception as exc:
-                self.after(0, lambda: self.pull_status.configure(
-                    text=f"Pull failed: {exc}", fg=theme.RED))
+                set_status(f"Pull failed: {exc}", theme.RED)
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -350,7 +378,7 @@ class FirstRunWizard(tk.Toplevel):
             text = hud.core.stt.listen(seconds=4.0)
             msg = f'I heard: “{text}”' if text else (
                 "I didn't catch that — check your microphone permissions.")
-            self.after(0, lambda: self.voice_status.configure(
+            self._alive(lambda: self.voice_status.configure(
                 text=msg, fg=theme.GREEN if text else theme.RED))
 
         threading.Thread(target=work, daemon=True).start()

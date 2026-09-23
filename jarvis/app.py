@@ -51,8 +51,8 @@ class JarvisCore:
     def call(self, fn: Callable, *args: Any) -> None:
         self.ui.call(fn, *args)
 
-    def log(self, kind: str, text: str) -> None:
-        self.activity.append(kind, text)
+    def log(self, kind: str, text: str, **extra: Any) -> None:
+        self.activity.append(kind, text, **extra)
 
     def speak(self, text: str) -> None:
         self.log("say", text)
@@ -246,6 +246,23 @@ class JarvisCore:
         self.tts.reload()
         self.executor.settings = self.settings
 
+    def preload_speech(self) -> None:
+        """Warm the speech engine in the background so the very first voice
+        command does not stall on model download/load."""
+
+        def work():
+            try:
+                self.call(self.ui.narrate,
+                          "Warming up the speech engine in the background…")
+                self.stt.preload(
+                    on_status=lambda s: self.call(self.ui.narrate, s))
+                self.call(self.ui.narrate,
+                          "Speech engine ready. Type or hold Ctrl+Alt+Space.")
+            except Exception:
+                pass
+
+        threading.Thread(target=work, daemon=True).start()
+
     def shutdown(self) -> None:
         self.abort.abort()
         self.tts.stop()
@@ -265,8 +282,8 @@ class _UIAdapter:
     def say(self, text: str) -> None:
         self.core.speak(text)
 
-    def log(self, kind: str, text: str) -> None:
-        self.core.log(kind, text)
+    def log(self, kind: str, text: str, **extra: Any) -> None:
+        self.core.log(kind, text, **extra)
 
     def confirm(self, title: str, message: str) -> bool:
         return self.core.ui.confirm(title, message)
