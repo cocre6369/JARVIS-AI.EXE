@@ -1,0 +1,14 @@
+# J.A.R.V.I.S. core runtime (Windows target)
+requests>=2.31
+psutil>=5.9
+Pillow>=10.0
+pyautogui>=0.9.54
+pyttsx3>=2.90
+pywin32>=306; sys_platform == "win32"
+comtypes>=1.2; sys_platform == "win32"
+pycaw>=20240210; sys_platform == "win32"
+pynput>=1.7.6
+pystray>=0.19; sys_platform == "win32"
+send2trash>=1.8
+numpy>=1.26
+sounddevice>=0.4.6; sys_platform == "win32"

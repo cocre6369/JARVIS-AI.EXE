@@ -1,0 +1,3 @@
+# Full build: core + offline Whisper speech-to-text (larger .exe, better voice)
+-r requirements.txt
+faster-whisper>=1.0.0
