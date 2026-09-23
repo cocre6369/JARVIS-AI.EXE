@@ -59,7 +59,7 @@ jobs:
 
   release:
     name: Publish nightly release
-    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
     needs: build
     runs-on: ubuntu-latest
     steps:
