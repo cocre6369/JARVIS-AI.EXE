@@ -67,6 +67,8 @@ class Settings:
     # UI
     always_on_top: bool = True
     hotkey_show: str = "ctrl+alt+j"
+    hotkey_standby: str = "ctrl+alt+p"   # master on/off — standby at any time
+    hotkey_talk: str = "ctrl+alt+space"  # hold to talk from anywhere
     confirm_every_action: bool = False     # extra-strict: confirm even "safe" actions
 
     # Book-keeping

@@ -210,6 +210,7 @@ class JarvisHUD(tk.Tk):
         self._pump()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.bind_all("<Escape>", self._escape)
+        self.bind_all("<Control-q>", lambda _e: self.quit_app())
 
         self.core = JarvisCore(self, self.settings)
         # Mirror every activity-log entry into the HUD panel (thread-safe).
@@ -252,17 +253,36 @@ class JarvisHUD(tk.Tk):
         menu = tk.Menu(self, tearoff=0, bg=theme.PANEL, fg=theme.TEXT,
                        activebackground=theme.CYAN_DIM,
                        activeforeground=theme.WHITE, relief="flat")
-        menu.add_command(label="Configuration…", command=self.open_settings)
-        menu.add_command(label="Run setup wizard…", command=self.run_wizard)
-        menu.add_separator()
+        main = tk.Menu(menu, tearoff=0, bg=theme.PANEL, fg=theme.TEXT,
+                       activebackground=theme.CYAN_DIM,
+                       activeforeground=theme.WHITE, relief="flat",
+                       font=theme.FONT_UI)
+        main.add_command(label="Configuration…", command=self.open_settings)
+        main.add_command(label="Run setup wizard…", command=self.run_wizard)
+        main.add_separator()
+        self.enabled_var = tk.BooleanVar(value=True)
+        main.add_checkbutton(label="JARVIS enabled (off = standby)",
+                             variable=self.enabled_var,
+                             command=self._toggle_enabled,
+                             accelerator="Ctrl+Alt+P")
+        main.add_command(label="Hold to talk (keep pressed)",
+                         state="disabled", accelerator="Ctrl+Alt+Space")
+        main.add_separator()
         self.tts_var = tk.BooleanVar(value=self.settings.tts_enabled)
-        menu.add_checkbutton(label="Speak replies", variable=self.tts_var,
+        main.add_checkbutton(label="Speak replies", variable=self.tts_var,
                              command=self._toggle_tts)
         self.top_var = tk.BooleanVar(value=self.settings.always_on_top)
-        menu.add_checkbutton(label="Always on top", variable=self.top_var,
+        main.add_checkbutton(label="Always on top", variable=self.top_var,
                              command=self._toggle_top)
-        menu.add_separator()
-        menu.add_command(label="Exit  (Ctrl+Q)", command=self.quit_app)
+        main.add_separator()
+        main.add_command(label="Show / Hide window", command=self._toggle_visibility,
+                         accelerator="Ctrl+Alt+J")
+        main.add_command(label="Abort automation", command=self.abort_now,
+                         accelerator="Esc")
+        main.add_separator()
+        main.add_command(label="Exit", command=self.quit_app,
+                         accelerator="Ctrl+Q")
+        menu.add_cascade(label="☰  J.A.R.V.I.S.", menu=main)
         self.config(menu=menu)
 
         # ---- main row ----------------------------------------------------
@@ -294,7 +314,10 @@ class JarvisHUD(tk.Tk):
                  justify="center").pack(pady=(0, 8))
         self.abort_btn = theme.styled_button(left, "■  ABORT", self.abort_now,
                                              "red", width=14)
-        self.abort_btn.pack(pady=(4, 16))
+        self.abort_btn.pack(pady=(4, 10))
+        tk.Label(left, text=theme.HOTKEY_HINTS, font=theme.FONT_SMALL,
+                 bg=theme.PANEL, fg=theme.MUTED, justify="left"
+                 ).pack(anchor="w", padx=16, pady=(0, 14))
 
         # centre: chat
         centre = theme.hud_frame(body)
@@ -384,6 +407,16 @@ class JarvisHUD(tk.Tk):
         self.narrate(text)
         self.bell()
 
+    def set_enabled(self, enabled: bool) -> None:
+        """Mirror the core standby switch in the menu, mic button and chip."""
+        self.enabled_var.set(bool(enabled))
+        if enabled:
+            self.mic_btn.configure(state="normal", bg=theme.PANEL_2,
+                                   text="🎤  HOLD TO TALK")
+        else:
+            self.mic_btn.configure(state="disabled",
+                                   text="🎤  STANDBY — Ctrl+Alt+P")
+
     def flash_alert(self, text: str) -> None:
         self.activity_view.add(f"⏰ {time.strftime('%H:%M:%S')}  {text}",
                                "log_warn")
@@ -462,6 +495,12 @@ class JarvisHUD(tk.Tk):
         self.core.settings.tts_enabled = bool(self.tts_var.get())
         self.core.reload_settings()
 
+    def _toggle_enabled(self) -> None:
+        self.core.toggle_standby(force=not bool(self.enabled_var.get()))
+
+    def toggle_standby_hotkey(self) -> None:
+        self.core.toggle_standby()
+
     def _toggle_top(self) -> None:
         self.core.settings.always_on_top = bool(self.top_var.get())
         self.core.reload_settings()
@@ -489,16 +528,47 @@ class JarvisHUD(tk.Tk):
                 e.get("kind", "info"), e.get("text", "")))
 
     def _start_hotkeys(self) -> None:
+        """Global hotkeys, registered in one background listener:
+
+        Ctrl+Alt+P      — master standby / wake  (the off switch)
+        Ctrl+Alt+Space  — hold to talk
+        Ctrl+Alt+J      — show / hide the HUD
+        """
         def listen():
             try:
                 from pynput import keyboard
 
-                combo = (self.core.settings.hotkey_show or "ctrl+alt+j").lower()
+                combo_show = (self.core.settings.hotkey_show or "ctrl+alt+j").lower()
+                combo_stdby = (self.core.settings.hotkey_standby or "ctrl+alt+p").lower()
 
-                def on_activate():
-                    self.call(self._toggle_visibility)
+                def norm(key) -> str:
+                    name = getattr(key, "name", None) or str(key)
+                    name = name.replace("Key.", "").replace("_l", "").replace("_r", "")
+                    return name.lower()
 
-                hk = keyboard.GlobalHotKeys({combo: on_activate})
+                held = set()
+                talking = {"on": False}
+
+                def on_press(key):
+                    held.add(norm(key))
+                    if ("space" in held and "ctrl" in held and "alt" in held
+                            and not talking["on"]):
+                        talking["on"] = True
+                        self.call(self._mic_down)
+
+                def on_release(key):
+                    if talking["on"] and norm(key) in ("space", "ctrl", "alt"):
+                        talking["on"] = False
+                        self.call(self._mic_up)
+                    held.discard(norm(key))
+
+                listener = keyboard.Listener(on_press=on_press,
+                                             on_release=on_release)
+                listener.start()
+                hk = keyboard.GlobalHotKeys({
+                    combo_show: lambda: self.call(self._toggle_visibility),
+                    combo_stdby: lambda: self.call(self.toggle_standby_hotkey),
+                })
                 hk.start()
             except Exception:
                 pass

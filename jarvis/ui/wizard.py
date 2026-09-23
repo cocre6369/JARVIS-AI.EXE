@@ -179,8 +179,12 @@ class FirstRunWizard(tk.Toplevel):
             "   ✕  touch SSH keys, password stores or .env files\n"
             "   ✕  delete or move your files without your explicit approval\n"
             "   ✕  send email — I only prepare drafts for YOUR review")
-        self._text("\nEvery sensitive action asks for your on-screen "
+        self._text("\nEvery sensitive action asks for your explicit on-screen "
                    "confirmation first, and STOP (or Esc) halts me instantly.")
+        self._text("\nYou are always in control: the mic only listens while you "
+                   "hold the button (or Ctrl+Alt+Space), and Ctrl+Alt+P puts "
+                   "me fully in standby at any moment — mic off, speech off, "
+                   "automation halted.")
         self._text("\nHow should I address you?")
         self.name_entry = tk.Entry(self.body, font=theme.FONT_UI, width=20,
                                    bg=theme.PANEL, fg=theme.TEXT,

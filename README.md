@@ -86,6 +86,25 @@ what's my system status?
 **Stop anything instantly:** the red **STOP** button, **Esc**, or the
 *Abort automation* tray item.
 
+## Power & privacy controls — you are always in charge
+
+JARVIS is **never always-listening**. The microphone only opens while you
+actively hold the talk control; nothing runs in the background waiting for
+speech.
+
+| Shortcut | Action |
+| --- | --- |
+| **Ctrl+Alt+P** | **Master standby / wake — disable JARVIS instantly.** Kills the mic, silences speech and halts any running automation until pressed again |
+| **Ctrl+Alt+Space** | Hold to talk (works from any app) |
+| **Ctrl+Alt+J** | Show / hide the HUD window |
+| **Esc** (or STOP button) | Abort the current action chain immediately |
+| **Ctrl+Q** | Quit J.A.R.V.I.S. completely |
+
+The same controls live in the **☰ J.A.R.V.I.S.** menu (top-left), including
+an *enabled* checkbox equal to Ctrl+Alt+P. While in standby the arc reactor
+goes dark, the mic button locks, and commands are refused. The system-tray
+icon keeps *Abort automation* and *Exit* one click away.
+
 ## Guardrails — enforced in code, not just in the prompt
 
 These are hard limits in the executor layer. The model cannot route around

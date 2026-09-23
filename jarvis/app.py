@@ -42,6 +42,7 @@ class JarvisCore:
         self.stt = SpeechToText(self.settings)
 
         self.busy = False
+        self.standby = False          # master off-switch (Ctrl+Alt+P)
         self._worker: Optional[threading.Thread] = None
         self._tick = threading.Thread(target=self._reminder_loop, daemon=True)
         self._tick.start()
@@ -58,11 +59,36 @@ class JarvisCore:
         self.call(self.ui.add_message, "jarvis", text)
         self.tts.speak(text)
 
+    # ------------------------------------------------------------- standby
+    def toggle_standby(self, force: Optional[bool] = None) -> None:
+        """Master on/off switch. Standby aborts work, kills audio and refuses
+        new commands until toggled back — the simple 'disable at any time'."""
+        new = (not self.standby) if force is None else bool(force)
+        if new == self.standby:
+            return
+        self.standby = new
+        if new:
+            self.abort.abort()
+            self.tts.stop()
+            self.log("standby", "STANDBY engaged — mic off, automation halted")
+            self.call(self.ui.set_state, "STANDBY")
+            self.call(self.ui.narrate,
+                      "Standing by. Ctrl+Alt+P wakes me when you need me.")
+        else:
+            self.log("standby", "Standby released — systems live")
+            self.call(self.ui.set_state, "IDLE")
+            self.call(self.ui.narrate, "Back online. At your service.")
+        self.call(self.ui.set_enabled, not new)
+
     # ------------------------------------------------------------- commands
     def submit(self, text: str, source: str = "text") -> None:
         """Queue a user command (from text box or voice)."""
         text = (text or "").strip()
         if not text:
+            return
+        if self.standby:
+            self.call(self.ui.narrate,
+                      "I'm in standby — Ctrl+Alt+P brings me back online.")
             return
         if self.busy:
             self.call(self.ui.narrate,
@@ -122,7 +148,8 @@ class JarvisCore:
         finally:
             self.session.save_messages(self.brain.export())
             self.busy = False
-            self.call(self.ui.set_state, "IDLE")
+            self.call(self.ui.set_state,
+                      "STANDBY" if self.standby else "IDLE")
 
     def _plan_step(self, text: str) -> Plan:
         try:
@@ -141,7 +168,7 @@ class JarvisCore:
     # ------------------------------------------------------------- voice
     def listen_once(self) -> None:
         """Record one utterance and run it as a command."""
-        if self.busy:
+        if self.busy or self.standby:
             return
         self.abort.clear()
 
@@ -163,7 +190,7 @@ class JarvisCore:
 
     def listen_push(self) -> None:
         """Begin push-to-talk recording (button pressed)."""
-        if self.busy:
+        if self.busy or self.standby:
             return
         self._ptt_stop = threading.Event()
         self._ptt_text: List[str] = []

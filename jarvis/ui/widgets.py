@@ -108,7 +108,7 @@ class ArcReactor(tk.Canvas):
 
         speed = {"IDLE": 0.6, "LISTENING": 2.2, "THINKING": 3.5,
                  "ACTING": 2.8, "SPEAKING": 1.6, "BLOCKED": 1.0,
-                 "ERROR": 1.0}.get(state, 1.0)
+                 "ERROR": 1.0, "STANDBY": 0.12}.get(state, 1.0)
         pulse = (math.sin(t * 0.08 * speed) + 1) / 2        # 0..1
         glow = 0.35 + 0.65 * (pulse if state != "IDLE" else 0.5 + pulse * 0.2)
 

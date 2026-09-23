@@ -36,6 +36,7 @@ STATE_COLORS = {
     "SPEAKING": CYAN,
     "BLOCKED": RED,
     "ERROR": RED,
+    "STANDBY": "#34525e",
 }
 
 STATE_LABELS = {
@@ -46,7 +47,15 @@ STATE_LABELS = {
     "SPEAKING": "RESPONDING…",
     "BLOCKED": "BLOCKED",
     "ERROR": "ERROR",
+    "STANDBY": "STANDBY",
 }
+
+HOTKEY_HINTS = (
+    "CTRL+ALT+P .... STANDBY / WAKE\n"
+    "CTRL+ALT+SPACE  HOLD TO TALK\n"
+    "CTRL+ALT+J .... SHOW / HIDE\n"
+    "ESC ........... ABORT"
+)
 
 
 def style_ttk(root) -> None:
