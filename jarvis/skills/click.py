@@ -17,7 +17,7 @@ from __future__ import annotations
 import difflib
 import re
 import time
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from . import register
 
@@ -127,9 +127,12 @@ def click(name: str) -> str:
                 "Use press_keys instead (down + enter selects the "
                 "highlighted result).")
     if control is None:
+        near = _visible_labels(12)
+        seen = (" Closest visible labels: " + "; ".join(near) + ".") if near \
+            else " No labelled controls found — the window may still be loading."
         return (f"ERROR: nothing clickable labelled '{label}' in the front "
-                "window. Try press_keys [down] then [enter] to activate the "
-                "highlighted result, or ask the user to click it.")
+                f"window.{seen} Don't give up: call screen_state and click an "
+                "exact label you saw, or press_keys down then enter.")
     try:
         shown = control.Name
     except Exception:
@@ -286,3 +289,34 @@ def screen_state(max_items: int = 60) -> str:
     except Exception as exc:
         lines.append(f"(UI read failed: {exc})")
     return "\n".join(lines)
+
+
+def _visible_labels(max_items: int = 25) -> List[str]:
+    """Plain visible control labels of the foreground window (best-effort,
+    never raises). Used by click failures and the media ritual so the brain
+    can pick an EXACT label instead of guessing."""
+    import os as _os
+    if _os.name != "nt":
+        return []
+    out: List[str] = []
+    try:
+        import uiautomation as auto  # type: ignore
+        window = auto.GetForegroundControl()
+        if window is None:
+            return []
+        seen = 0
+        deadline = time.time() + _SEARCH_BUDGET_S
+        for control, _depth in auto.WalkControl(window, includeTop=False,
+                                                maxDepth=8):
+            seen += 1
+            if seen > 400 or time.time() > deadline or len(out) >= max_items:
+                break
+            try:
+                name = (control.Name or "").strip()
+            except Exception:
+                continue
+            if name and 0 < len(name) <= 60 and name not in out:
+                out.append(name)
+    except Exception:
+        pass
+    return out

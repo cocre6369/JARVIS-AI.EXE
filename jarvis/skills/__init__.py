@@ -74,4 +74,4 @@ def dispatch(tool: Tool, args: Dict[str, Any]) -> str:
 
 def load_all() -> None:
     """Import every skill module so its @register calls run."""
-    from . import apps, click, email, misc, web  # noqa: F401
+    from . import apps, click, email, media, misc, web  # noqa: F401

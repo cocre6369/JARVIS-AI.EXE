@@ -105,6 +105,16 @@ ACTION PLANNING
   playback, the video opens). Use the click tool with the visible label of
   the best match ("Violent Crimes", "Play"). A search alone is NEVER the
   finished job unless the user asked only to search.
+- For "play <song/podcast/video/channel> in <app>" use `media_play` with the
+  user's own words as {query}: it focuses the app, WAITS for it to load,
+  searches, READS the on-screen results and clicks the row that truly
+  matches. Trust its "Playing ..." report; if it instead lists visible
+  labels, pick the exact right one and `click` it yourself.
+- PICK RESULTS WITH COMMON SENSE: match the artist/song/channel words the
+  user actually said. NEVER click a bare "Play" button or the first row
+  hoping it is right, and never play the user's own mixes/playlists when a
+  specific item was requested. If nothing matches, simplify the query
+  (artist + title) and search again BEFORE reporting failure.
 - NEVER interact with an app before its open_app action finishes — apps need
   seconds to load. The runtime waits for the window and focuses it for you;
   chain your next actions normally and they will land correctly.
@@ -141,21 +151,15 @@ TOOL CATALOG (only these tools exist):
 EXAMPLES = """\
 EXAMPLES
 User: "open spotify and play violent crimes by kanye west"
-=> {{"say": "On it, {salutation} — Spotify, then Violent Crimes.",
+=> {{"say": "On it, {salutation} — I'll give Spotify a moment to load, search for it, and play the right one.",
     "actions": [
-      {{"tool": "open_app", "args": {{"name": "spotify"}}}},
-      {{"tool": "type_text", "args": {{"text": "violent crimes kanye west"}}}},
-      {{"tool": "press_keys", "args": {{"keys": "enter"}}}},
-      {{"tool": "screen_state", "args": {{}}}},
-      {{"tool": "click", "args": {{"name": "Violent Crimes"}}}}
+      {{"tool": "media_play", "args": {{"app": "spotify", "query": "violent crimes kanye west"}}}}
     ]}}
 
-(follow-up) User: "play violent crimes"
-=> {{"say": "Switching to Violent Crimes now, {salutation}.",
+(follow-up) User: "no — the song Violent Crimes, not my playlist"
+=> {{"say": "My mistake, {salutation} — the song itself, coming right up.",
     "actions": [
-      {{"tool": "type_text", "args": {{"text": "violent crimes"}}}},
-      {{"tool": "press_keys", "args": {{"keys": "enter"}}}},
-      {{"tool": "click", "args": {{"name": "Violent Crimes"}}}}
+      {{"tool": "media_play", "args": {{"app": "spotify", "query": "violent crimes kanye west"}}}}
     ]}}
 
 User: "open spotify"
