@@ -25,6 +25,9 @@ class TestMediaPlay(unittest.TestCase):
         from jarvis.skills.media import media_play
         self.assertIn("ERROR", media_play("spotify", ""))
 
+    @unittest.skipIf(sys.platform.startswith("win"),
+                     "on Windows this test would run the real ritual "
+                     "(launch apps on the CI machine)")
     def test_quick_and_graceful_off_windows(self):
         from jarvis.skills.media import media_play
         t0 = time.time()
