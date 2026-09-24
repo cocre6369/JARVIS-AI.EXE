@@ -15,12 +15,12 @@ VSVersionInfo(
       StringTable('040904B0', [
         StringStruct('CompanyName', 'Stark Local Systems'),
         StringStruct('FileDescription', 'J.A.R.V.I.S. — Local Desktop AI Assistant'),
-        StringStruct('FileVersion', '1.0.0.0'),
+        StringStruct('FileVersion', '1.1.1.0'),
         StringStruct('InternalName', 'JARVIS-AI'),
         StringStruct('LegalCopyright', 'Runs fully locally. Powered by Ollama.'),
         StringStruct('OriginalFilename', 'JARVIS-AI.exe'),
         StringStruct('ProductName', 'J.A.R.V.I.S. Desktop Assistant'),
-        StringStruct('ProductVersion', '1.0.0.0'),
+        StringStruct('ProductVersion', '1.1.1.0'),
       ])
     ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
