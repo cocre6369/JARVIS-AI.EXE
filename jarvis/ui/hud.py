@@ -464,14 +464,6 @@ class JarvisHUD(tk.Tk):
         self.activity_view.add(
             f"{icon} {time.strftime('%H:%M:%S')}  {text[:160]}", tag)
 
-    def _log_history(self, entry: dict) -> None:
-        """Show a past event with its ORIGINAL timestamp, dimmed and marked,
-        so replayed history can never be mistaken for a live error."""
-        stamp = time.strftime("%H:%M:%S", time.localtime(entry.get("t", 0)))
-        self.activity_view.add(
-            f"⟲ {stamp} (earlier)  {str(entry.get('text', ''))[:140]}",
-            "log_info")
-
     def confirm(self, title: str, message: str) -> bool:
         result = {"ok": False}
         done = threading.Event()
@@ -566,15 +558,14 @@ class JarvisHUD(tk.Tk):
         ]
         for i, (tag, text) in enumerate(lines):
             self.after(180 * i, lambda t=text, g=tag: self.activity_view.add(t, g))
-        # Replay a little history — clearly marked as OLD events with their
-        # ORIGINAL timestamps so yesterday's errors never look live.
-        history = self.core.activity.tail(5)
-        if history:
-            self.after(200 * len(lines),
-                       lambda: self.activity_view.add("─── past events ───",
-                                                      "log_info"))
-        for entry in history:
-            self.after(200, lambda e=entry: self._log_history(e))
+        # Never replay raw history into the live panel: old errors read as
+        # live ones. One summary line instead; full history stays in the logs.
+        n_err = sum(1 for e in self.core.activity.tail(50)
+                    if e.get("kind") in ("error", "denied", "blocked"))
+        if n_err:
+            self.after(200 * len(lines), lambda n=n_err: self.activity_view.add(
+                f"⟲ note: {n} issue(s) in earlier sessions "
+                "— full history in %LOCALAPPDATA%\\JARVIS\\logs", "log_info"))
 
     def _start_hotkeys(self) -> None:
         """Global hotkeys, registered in one background listener:
