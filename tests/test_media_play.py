@@ -62,7 +62,17 @@ class TestClickFailureShowsScreen(unittest.TestCase):
         src = inspect.getsource(click.click)
         self.assertIn("_visible_labels", src)   # failure path reads the screen
 
-    def test_visible_labels_safe_off_windows(self):
+    def test_visible_labels_never_crash(self):
+        # On Windows this runs the REAL UIA walk (never raises); off Windows
+        # it must be a clean no-op. Either way: a bounded list, no crash.
+        from jarvis.skills.click import _visible_labels
+        out = _visible_labels(5)
+        self.assertIsInstance(out, list)
+        self.assertLessEqual(len(out), 5)
+
+    @unittest.skipUnless(not sys.platform.startswith("win"),
+                         "strict no-op behaviour is off-Windows only")
+    def test_visible_labels_noop_off_windows(self):
         from jarvis.skills.click import _visible_labels
         self.assertEqual(_visible_labels(5), [])
 
