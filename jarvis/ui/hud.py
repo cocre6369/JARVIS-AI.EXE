@@ -268,7 +268,8 @@ class JarvisHUD(tk.Tk):
         head.pack(fill="x")
         tk.Label(head, text="  ◈  J.A.R.V.I.S.", font=theme.FONT_TITLE,
                  bg=theme.PANEL, fg=theme.CYAN).pack(side="left")
-        tk.Label(head, text=store.APP_SUBTITLE + "  ·  STARK LOCAL INSTANCE",
+        tk.Label(head, text=f"{store.APP_SUBTITLE}  ·  v{store.VERSION}  ·  "
+                            "STARK LOCAL INSTANCE",
                  font=theme.FONT_SMALL, bg=theme.PANEL, fg=theme.MUTED
                  ).pack(side="left", padx=12)
         self.clock = tk.Label(head, text="", font=theme.FONT_UI_B,
@@ -463,6 +464,14 @@ class JarvisHUD(tk.Tk):
         self.activity_view.add(
             f"{icon} {time.strftime('%H:%M:%S')}  {text[:160]}", tag)
 
+    def _log_history(self, entry: dict) -> None:
+        """Show a past event with its ORIGINAL timestamp, dimmed and marked,
+        so replayed history can never be mistaken for a live error."""
+        stamp = time.strftime("%H:%M:%S", time.localtime(entry.get("t", 0)))
+        self.activity_view.add(
+            f"⟲ {stamp} (earlier)  {str(entry.get('text', ''))[:140]}",
+            "log_info")
+
     def confirm(self, title: str, message: str) -> bool:
         result = {"ok": False}
         done = threading.Event()
@@ -546,7 +555,7 @@ class JarvisHUD(tk.Tk):
 
     def _boot_sequence(self) -> None:
         lines = [
-            ("boot", "INITIALIZING J.A.R.V.I.S. INTERFACE …"),
+            ("boot", f"INITIALIZING J.A.R.V.I.S. v{store.VERSION} …"),
             ("log_info", "arc reactor ............ STABLE"),
             ("log_info", f"voice synthesis ........ "
                          f"{'ONLINE' if self.core.tts._ok else 'MUTED'}"),
@@ -557,9 +566,15 @@ class JarvisHUD(tk.Tk):
         ]
         for i, (tag, text) in enumerate(lines):
             self.after(180 * i, lambda t=text, g=tag: self.activity_view.add(t, g))
-        for entry in self.core.activity.tail(8):
-            self.after(200, lambda e=entry: self.log_line(
-                e.get("kind", "info"), e.get("text", "")))
+        # Replay a little history — clearly marked as OLD events with their
+        # ORIGINAL timestamps so yesterday's errors never look live.
+        history = self.core.activity.tail(5)
+        if history:
+            self.after(200 * len(lines),
+                       lambda: self.activity_view.add("─── past events ───",
+                                                      "log_info"))
+        for entry in history:
+            self.after(200, lambda e=entry: self._log_history(e))
 
     def _start_hotkeys(self) -> None:
         """Global hotkeys, registered in one background listener:

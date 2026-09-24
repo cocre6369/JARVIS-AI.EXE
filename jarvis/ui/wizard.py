@@ -32,7 +32,8 @@ class FirstRunWizard(tk.Toplevel):
         self.page = 0
         self.models: List[str] = []
 
-        self.header = tk.Label(self, text="", font=theme.FONT_TITLE,
+        self.header = tk.Label(self, text=f"◈  J.A.R.V.I.S.  ONLINE  ·  v{VERSION}",
+                               font=theme.FONT_TITLE,
                                bg=theme.BG, fg=theme.CYAN, anchor="w")
         self.header.pack(fill="x", padx=24, pady=(18, 0))
         self.sub = tk.Label(self, text="", font=theme.FONT_SMALL, bg=theme.BG,
