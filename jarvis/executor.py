@@ -96,6 +96,15 @@ class Executor:
                 output = skills.dispatch(tool, args)
             except Exception as exc:  # never crash mid-chain
                 output = f"ERROR: {exc}"
+            if str(tool) in ("open_app", "launch_app") or \
+                    str(name) in ("open_app", "launch_app"):
+                # Apps need seconds to load. Wait for the window, focus it,
+                # so the NEXT keystrokes/clicks land in the right place
+                # instead of a half-loaded app.
+                from .skills.click import wait_for_window
+                ready = wait_for_window(str(args.get("name", "")))
+                if ready:
+                    output = f"{output} [window ready: {ready[:60]}]"
             took = time.time() - started
 
             ok = not str(output).startswith("ERROR")

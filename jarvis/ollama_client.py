@@ -72,13 +72,7 @@ class OllamaClient:
     # ---------------- chat ----------------
     def chat(self, model: str, messages: List[Dict[str, str]],
              temperature: float = 0.2) -> str:
-        payload = {
-            "model": model,
-            "messages": messages,
-            "stream": False,
-            "options": {"temperature": temperature, "num_ctx": 8192},
-            "keep_alive": "10m",
-        }
+        payload = _chat_payload(model, messages, temperature)
         try:
             r = requests.post(f"{self.base_url}/api/chat", json=payload,
                               timeout=self.timeout)
@@ -136,3 +130,19 @@ class OllamaClient:
             return True
         except OSError:
             return False
+
+
+def _chat_payload(model: str, messages: list, temperature: float) -> dict:
+    """Request body for /api/chat — kept in one testable place.
+
+    num_predict caps plan length (snappier replies); keep_alive -1 keeps the
+    model loaded between requests so follow-ups skip the 20-30s wake-up
+    pause (unload manually with `ollama stop` if RAM is needed elsewhere)."""
+    return {
+        "model": model,
+        "messages": messages,
+        "stream": False,
+        "options": {"temperature": temperature, "num_ctx": 8192,
+                    "num_predict": 800},
+        "keep_alive": -1,
+    }

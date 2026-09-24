@@ -180,3 +180,109 @@ def os_name_is_not_windows() -> bool:
     import os
 
     return os.name != "nt"
+
+
+# ─── screen reading + app-ready wait ───────────────────────────────────
+def _title_matches(title: str, name: str) -> bool:
+    t, n = _norm(title), _norm(name)
+    return bool(n) and (n in t or t in n)
+
+
+def wait_for_window(name: str, timeout: float = 15.0) -> str:
+    """Wait until a window for the app exists, then focus it and let it
+    settle. Stops Jarvis typing/clicking into a half-loaded app ('it opens
+    Spotify and immediately selects stuff too early'). Returns the matched
+    window title, or '' on best-effort failure. Never raises."""
+    import os as _os
+    if _os.name != "nt":
+        return ""
+    try:
+        import win32gui  # type: ignore
+    except Exception:
+        time.sleep(min(2.0, timeout))
+        return ""
+    deadline = time.time() + max(0.5, timeout)
+    found = 0
+    while time.time() < deadline:
+        hits: list = []
+
+        def enum(hwnd, acc):
+            try:
+                if win32gui.IsWindowVisible(hwnd):
+                    title = win32gui.GetWindowText(hwnd)
+                    if title and _title_matches(title, name):
+                        acc.append(hwnd)
+            except Exception:
+                pass
+            return True
+
+        try:
+            win32gui.EnumWindows(enum, hits)
+        except Exception:
+            break
+        if hits:
+            found = hits[0]
+            break
+        time.sleep(0.25)
+    if not found:
+        return ""
+    try:
+        win32gui.ShowWindow(found, 9)        # SW_RESTORE
+        win32gui.SetForegroundWindow(found)  # so input lands HERE
+    except Exception:
+        pass
+    time.sleep(0.8)                          # let it paint & accept input
+    try:
+        return win32gui.GetWindowText(found)
+    except Exception:
+        return ""
+
+
+@register("screen_state", "READ THE SCREEN: list the active window's visible "
+          "controls with their exact labels (use before clicking when unsure "
+          "what is on screen)", "{}", returns_data=True)
+def screen_state(max_items: int = 60) -> str:
+    """READ THE SCREEN: the active window's visible controls with their
+    exact labels, as text the model can reason over. Call before clicking
+    when unsure what is actually on screen. Never raises."""
+    import os as _os
+    if _os.name != "nt":
+        return "screen_state: not on Windows — no UI tree available"
+    try:
+        import win32gui  # type: ignore
+        title = win32gui.GetWindowText(win32gui.GetForegroundWindow()) \
+            or "(untitled window)"
+    except Exception:
+        title = "(unknown window)"
+    lines = [f"Window: {title}"]
+    count = 0
+    try:
+        import uiautomation as auto  # type: ignore
+        win = auto.GetForegroundControl()
+        if win is None:
+            return lines[0] + "\n(no controls read)"
+        queue = [(win, 0)]
+        while queue and count < max_items:
+            elem, depth = queue.pop(0)
+            try:
+                name = (elem.Name or "").strip()
+                ctype = str(elem.ControlTypeName or "") \
+                    .replace("Control", "").strip()
+            except Exception:
+                continue
+            if name and 0 < len(name) <= 60 and depth > 0:
+                lines.append(f"{'  ' * min(depth, 3)}[{ctype}] {name}")
+                count += 1
+            try:
+                kids = elem.GetChildren() or []
+            except Exception:
+                kids = []
+            if depth < 4:
+                for k in kids[:12]:
+                    queue.append((k, depth + 1))
+        if count == 0:
+            lines.append("(no labelled controls found — the window may "
+                         "still be loading; retry screen_state shortly)")
+    except Exception as exc:
+        lines.append(f"(UI read failed: {exc})")
+    return "\n".join(lines)

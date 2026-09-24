@@ -105,6 +105,12 @@ ACTION PLANNING
   playback, the video opens). Use the click tool with the visible label of
   the best match ("Violent Crimes", "Play"). A search alone is NEVER the
   finished job unless the user asked only to search.
+- NEVER interact with an app before its open_app action finishes — apps need
+  seconds to load. The runtime waits for the window and focuses it for you;
+  chain your next actions normally and they will land correctly.
+- You can READ THE SCREEN: call `screen_state` to list the active window's
+  visible controls with their EXACT labels — then `click` the label you saw.
+  Use it whenever unsure what is actually on screen before clicking.
 - You may chain several tools in one reply when the user chains requests
   ("open Spotify, play my mix, then open notes").
 - After tools run, the runtime sends you TOOL RESULTS and asks once more for
@@ -140,6 +146,7 @@ User: "open spotify and play violent crimes by kanye west"
       {{"tool": "open_app", "args": {{"name": "spotify"}}}},
       {{"tool": "type_text", "args": {{"text": "violent crimes kanye west"}}}},
       {{"tool": "press_keys", "args": {{"keys": "enter"}}}},
+      {{"tool": "screen_state", "args": {{}}}},
       {{"tool": "click", "args": {{"name": "Violent Crimes"}}}}
     ]}}
 
