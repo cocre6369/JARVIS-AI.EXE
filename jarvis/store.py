@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 APP_NAME = "JARVIS"
 APP_TITLE = "J.A.R.V.I.S."
 APP_SUBTITLE = "Just A Rather Very Intelligent System"
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 
 _LOCK = threading.RLock()
 

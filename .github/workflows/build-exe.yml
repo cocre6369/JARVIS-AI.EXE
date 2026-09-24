@@ -41,6 +41,12 @@ jobs:
           python -m pip install pyinstaller pillow
           python -m pip install -r ${{ matrix.req }}
 
+      - name: Run unit tests + undefined-name lint
+        shell: bash
+        run: |
+          pip install pyflakes
+          python -m unittest discover -s tests -v
+
       - name: Generate window icon
         run: python scripts/make_icon.py
 

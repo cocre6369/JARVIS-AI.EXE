@@ -69,6 +69,21 @@ def show_error(title: str, text: str) -> None:
             pass
 
 
+def _dpi_aware() -> None:
+    """Claim DPI awareness BEFORE the first window exists.
+
+    Without this, Windows bitmap-stretches the HUD and later re-rasterizes
+    it (the 'UI shrinks and loads again weirdly' glitch)."""
+    try:
+        import ctypes
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)  # per-monitor v2
+        except Exception:
+            ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
+
 def main() -> int:
     _dpi_aware()
     boot("--reset--")
