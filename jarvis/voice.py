@@ -221,6 +221,7 @@ class SpeechToText:
             models = data_dir() / "models"
             models.mkdir(exist_ok=True)
             self._whisper = WhisperModel(want, device="cpu", compute_type="int8",
+                                         cpu_threads=2, num_workers=1,
                                          download_root=str(models))
             self._whisper_name = want
             return self._whisper

@@ -97,6 +97,9 @@ class JarvisCore:
         self.abort.clear()
         self.log("user", text, source=source)
         self.call(self.ui.add_message, "user", text)
+        self.call(self.ui.narrate,
+                  f"Thinking with {self.settings.model}… (first request "
+                  "after startup can take ~30s while Ollama wakes the model)")
         self._worker = threading.Thread(target=self._run, args=(text,),
                                         daemon=True)
         self._worker.start()
@@ -248,10 +251,13 @@ class JarvisCore:
 
     def preload_speech(self) -> None:
         """Warm the speech engine in the background so the very first voice
-        command does not stall on model download/load."""
+        command does not stall on model download/load. Skipped while busy so
+        it never competes with the LLM for CPU."""
 
         def work():
             try:
+                if self.busy or self.standby:
+                    return
                 self.call(self.ui.narrate,
                           "Warming up the speech engine in the background…")
                 self.stt.preload(

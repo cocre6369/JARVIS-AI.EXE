@@ -26,7 +26,8 @@ hiddenimports = [
     "requests", "certifi",
 ]
 
-collect_targets = ["pycaw", "sounddevice", "pyautogui", "PIL", "tkinter"]
+collect_targets = ["pycaw", "sounddevice", "pyautogui", "PIL", "tkinter",
+                   "uiautomation", "comtypes"]
 if not SLIM:
     collect_targets += [
         "faster_whisper", "ctranslate2", "tokenizers", "huggingface_hub",

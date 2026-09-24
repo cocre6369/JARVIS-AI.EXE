@@ -142,6 +142,9 @@ def _humanise(name: str, args: Dict[str, Any]) -> str:
         "type_text": lambda a: f"Type {len(str(a.get('text', '')))} characters "
                                f"into the focused window: {str(a.get('text'))[:80]!r}",
         "press_keys": lambda a: f"Press the keys {a.get('keys')}",
+        "click": lambda a: f"Click the on-screen item labelled {a.get('name')!r}",
+        "double_click": lambda a: f"Double-click the item {a.get('name')!r}",
+        "click_xy": lambda a: f"Click at screen ({a.get('x')}, {a.get('y')})",
         "email_read_selected": lambda a: "Read the email you have selected in Outlook",
         "email_reply_draft": lambda a: "Prepare a reply draft in Outlook "
                                        "(won't be sent)",
@@ -187,6 +190,8 @@ def _narrate_line(name: str, args: Dict[str, Any]) -> str:
         "email_reply_draft": "Preparing your reply draft",
         "email_compose": "Preparing your draft",
         "type_text": "Typing on screen now",
+        "click": f"Clicking “{args.get('name', '')}”",
+        "double_click": f"Opening “{args.get('name', '')}”",
         "screenshot": "Capturing the screen",
     }
     return short.get(name, "Working on it")

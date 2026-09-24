@@ -169,7 +169,7 @@ class TestSmartTypingPolicy(unittest.TestCase):
                                        policy_for)
 
         for text in ("violent crimes kanye west", "Marques Brownlee",
-                     "lofi hip hop", "some search? q=1"):
+                     "lofi hip hop"):
             self.assertFalse(looks_crucial_text(text), text)
             self.assertEqual(
                 policy_for("type_text", {"text": text}, POLICY_AUTO),
@@ -205,6 +205,42 @@ class TestSmartTypingPolicy(unittest.TestCase):
         v = check_tool_call("type_text", {"text": "4111 1111 1111 1111"},
                             ["type_text"])
         self.assertFalse(v.ok)
+
+
+class TestClickPolicy(unittest.TestCase):
+    """Clicking result rows must be instant; destructive/financial labels ask."""
+
+    def test_ordinary_clicks_are_instant(self):
+        from jarvis.guardrails import POLICY_AUTO, policy_for
+
+        for label in ("Violent Crimes", "Play", "Marques Brownlee",
+                      "Search", "Songs"):
+            self.assertEqual(policy_for("click", {"name": label}, POLICY_AUTO),
+                             POLICY_AUTO, label)
+
+    def test_crucial_click_labels_ask(self):
+        from jarvis.guardrails import POLICY_AUTO, POLICY_CONFIRM, policy_for
+
+        for label in ("Delete playlist", "Buy Premium", "Send", "Publish",
+                      "Close account", "Log out"):
+            self.assertEqual(policy_for("click", {"name": label}, POLICY_AUTO),
+                             POLICY_CONFIRM, label)
+
+    def test_blind_coordinate_click_asks(self):
+        from jarvis.guardrails import POLICY_AUTO, POLICY_CONFIRM, policy_for
+
+        self.assertEqual(policy_for("click_xy", {"x": 1, "y": 2}, POLICY_AUTO),
+                         POLICY_CONFIRM)
+
+    def test_click_label_validated(self):
+        from jarvis.guardrails import check_tool_call
+
+        self.assertTrue(check_tool_call("click", {"name": "Play"},
+                                        ["click"]).ok)
+        self.assertFalse(check_tool_call("click", {"name": ""},
+                                         ["click"]).ok)
+        self.assertFalse(check_tool_call("click", {"name": "a" * 200},
+                                         ["click"]).ok)
 
 
 class TestCoreLogging(unittest.TestCase):

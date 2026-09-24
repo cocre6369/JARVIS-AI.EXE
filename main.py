@@ -70,6 +70,7 @@ def show_error(title: str, text: str) -> None:
 
 
 def main() -> int:
+    _dpi_aware()
     boot("--reset--")
     boot(f"boot — {APP_TITLE} v{VERSION}  (python {sys.version.split()[0]}, "
          f"frozen={bool(getattr(sys, 'frozen', False))})")

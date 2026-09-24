@@ -162,10 +162,23 @@ class SettingsDialog(tk.Toplevel):
             side="right", padx=4)
 
     def _safe_models(self):
-        try:
-            return self.hud.core.client.list_models()
-        except Exception:
-            return []
+        def work():
+            try:
+                models = self.hud.core.client.list_models()
+            except Exception:
+                models = []
+
+            def apply():
+                try:
+                    if self.winfo_exists():
+                        self.model_box.configure(values=models)
+                except tk.TclError:
+                    pass
+
+            self.after(0, apply)
+
+        threading.Thread(target=work, daemon=True).start()
+        return []
 
     def _save(self) -> None:
         s = self.settings

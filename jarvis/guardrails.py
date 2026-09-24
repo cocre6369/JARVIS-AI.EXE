@@ -76,6 +76,17 @@ _CRED_PAYLOAD = re.compile(
 #: Bare card/account-style digit runs — payment data is never handled.
 _CARD_LIKE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 
+#: Click labels that are destructive / financial / communicative — these
+#: still ask the user first ("private or crucial").
+_CRUCIAL_CLICK = re.compile(
+    r"\b(delete|remove|uninstall|erase|wipe|format|factory[ -]?reset|"
+    r"purchase|buy|checkout|pay|order now|transfer|withdraw|deposit|"
+    r"send( now)?|submit( application| payment)?|publish|post( publicly)?|"
+    r"close account|cancel (account|subscription)|deactivate|"
+    r"block|report|sign ?out|log ?out|empty trash|reset (password|account))\b",
+    re.IGNORECASE,
+)
+
 #: Free text that is *private or crucial* (messages, emails, essays...) and
 #: therefore still gets a confirmation. Ordinary input — song titles, search
 #: terms, channel names — does NOT.
@@ -173,6 +184,11 @@ def check_tool_call(name: str, args: Dict[str, Any], registry_names: List[str]) 
         if not verdict.ok:
             return verdict
 
+    if name in ("click", "double_click"):
+        label = str(args.get("name", "")).strip()
+        if not label or len(label) > 80 or _SHELL_META_RE.search(label):
+            return Verdict(False, "invalid click label", POLICY_DENY)
+
     if name == "press_keys":
         combo = str(args.get("keys", "")).strip().lower().replace(" ", "")
         if combo not in _SAFE_KEY_COMBOS:
@@ -249,6 +265,11 @@ def policy_for(tool_name: str, args: Dict[str, Any], base_policy: str,
         # Everyday input (searches, song names, titles) just happens;
         # private/crucial text (messages, emails, long passages) still asks.
         if looks_crucial_text(str(args.get("text", ""))):
+            policy = _stricter(policy, POLICY_CONFIRM)
+    if tool_name in ("click", "double_click", "click_xy"):
+        if tool_name == "click_xy":
+            policy = _stricter(policy, POLICY_CONFIRM)  # blind coordinate click
+        if _CRUCIAL_CLICK.search(str(args.get("name", ""))):
             policy = _stricter(policy, POLICY_CONFIRM)
     if tool_name == "file_write":
         import os
