@@ -71,11 +71,5 @@ class TestVisibleSwitching(unittest.TestCase):
         self.assertIn("`focus_window`", p)
 
 
-class TestVersionBumped(unittest.TestCase):
-    def test_version_is_1_1_6(self):
-        from jarvis import store
-        self.assertEqual(store.VERSION, "1.1.6")
-
-
 if __name__ == "__main__":
     unittest.main(verbosity=2)

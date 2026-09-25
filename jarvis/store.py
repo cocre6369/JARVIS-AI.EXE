@@ -4,6 +4,7 @@ Everything lives under %LOCALAPPDATA%\\JARVIS (Windows) or ~/.jarvis (elsewhere)
 so settings and history survive restarts without polluting the install folder.
 """
 from __future__ import annotations
+import re
 
 import json
 import os
@@ -18,7 +19,14 @@ from typing import Any, Dict, List, Optional
 APP_NAME = "JARVIS"
 APP_TITLE = "J.A.R.V.I.S."
 APP_SUBTITLE = "Just A Rather Very Intelligent System"
-VERSION = "1.1.6"
+VERSION = "1.1.7"
+
+
+def normalize_model_tag(tag: str) -> str:
+    """Ollama model tags have no spaces and are lowercase: the user typing
+    'qwen3: 14b' or ' Qwen3:14B ' must still reach 'qwen3:14b'."""
+    return re.sub(r"\s+", "", (tag or "")).lower()
+
 
 _LOCK = threading.RLock()
 

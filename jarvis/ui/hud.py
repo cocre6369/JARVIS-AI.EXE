@@ -10,7 +10,7 @@ from typing import Any, Callable, Optional
 
 from .. import store
 from ..app import JarvisCore
-from ..store import Settings
+from ..store import Settings, normalize_model_tag
 from ..voice import available_engines
 from . import theme
 from .widgets import ArcReactor, ScrollText
@@ -138,6 +138,8 @@ class SettingsDialog(tk.Toplevel):
                                                                 **pad)
             w.grid(row=r, column=1, **pad)
             self.vars[key] = (var, kind)
+            if key == "model":
+                self.model_box = w      # _safe_models updates this later
 
         models = self._safe_models()
         add("How JARVIS addresses you", "user_name", width=18)
@@ -170,7 +172,7 @@ class SettingsDialog(tk.Toplevel):
 
             def apply():
                 try:
-                    if self.winfo_exists():
+                    if self.winfo_exists() and hasattr(self, "model_box"):
                         self.model_box.configure(values=models)
                 except tk.TclError:
                     pass
@@ -188,11 +190,32 @@ class SettingsDialog(tk.Toplevel):
                 if key in ("tts_rate",):
                     val = int(val)
                 setattr(s, key, val)
+                if key == "model" and isinstance(val, str):
+                    s.model = normalize_model_tag(val) or s.model
             except (ValueError, tk.TclError):
                 pass
         self.hud.core.reload_settings()
         self.hud.refresh_meta()
-        self.hud.narrate("Configuration updated.")
+        self.hud.narrate("Configuration updated. Model: " + s.model)
+
+        def check_model():
+            try:
+                installed = self.hud.core.client.list_models()
+            except Exception:
+                return
+            if installed and s.model not in installed:
+
+                def warn():
+                    try:
+                        if self.hud.winfo_exists():
+                            self.hud.narrate(
+                                f"Model '{s.model}' is not installed yet — run:  ollama pull {s.model}")
+                    except tk.TclError:
+                        pass
+
+                self.hud.after(0, warn)
+
+        threading.Thread(target=check_model, daemon=True).start()
         self.destroy()
 
 
