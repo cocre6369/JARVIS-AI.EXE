@@ -25,6 +25,7 @@ def parse_plan(text: str) -> Plan:
     """Extract {"say": ..., "actions": [...]} from model output, tolerating
     stray prose or markdown fences. Falls back to speaking the raw text."""
     text = (text or "").strip()
+    text = re.sub(r"<think>.*?(</think>|$)", "", text, flags=re.DOTALL).strip()
     if not text:
         return Plan(say="I'm afraid I lost my train of thought. Could you repeat that?")
 
@@ -56,9 +57,60 @@ def parse_plan(text: str) -> Plan:
         if say or actions:
             return Plan(say=say, actions=actions, raw=text)
 
+    # Structurally broken JSON (8B models drop brackets sometimes):
+    # repair it by regex-extracting the say + tool/args pairs, so the plan
+    # actually RUNS instead of being dumped into the chat as text.
+    fixed = _repair_plan(text)
+    if fixed:
+        return fixed
+
     # No JSON at all — treat the whole thing as conversational speech.
+    # NEVER echo raw plan markup to the user.
+    if '"say"' in text or '"tool"' in text:
+        return Plan(say="I couldn't form a valid plan just then — could you "
+                        "rephrase that?", actions=[], raw=text)
     cleaned = re.sub(r"[{}\[\]]", "", text).strip()
     return Plan(say=cleaned[:600], actions=[], raw=text)
+
+
+_SAY_RE = re.compile(r'"say"\s*:\s*"((?:[^"\\]|\\.)*)"')
+_TOOL_RE = re.compile(r'"tool"\s*:\s*"([A-Za-z_][A-Za-z0-9_]*)"')
+_KV_RE = re.compile(r'"([A-Za-z0-9_]+)"\s*:\s*"((?:[^"\\]|\\.)*)"(?!\s*:)')
+_PLAN_MARKERS = ("say", "reply", "response", "actions", "tool", "args")
+
+
+def _unesc(s: str) -> str:
+    try:
+        return json.loads('"%s"' % s)
+    except ValueError:
+        return s
+
+
+def _repair_plan(text: str) -> Optional[Plan]:
+    """Salvage {"say": ...} + tool/args pairs from broken JSON — even when
+    every [ ] { } around them is missing."""
+    if '"tool"' not in text and '"say"' not in text:
+        return None
+    say = ""
+    m = _SAY_RE.search(text)
+    if m:
+        say = _unesc(m.group(1)).strip()
+    actions: List[Dict[str, Any]] = []
+    tools = list(_TOOL_RE.finditer(text))
+    for i, tm in enumerate(tools):
+        seg_end = tools[i + 1].start() if i + 1 < len(tools) else len(text)
+        seg = text[tm.end():seg_end]
+        args: Dict[str, Any] = {}
+        for km in _KV_RE.finditer(seg):
+            key = km.group(1)
+            if key in _PLAN_MARKERS:
+                continue
+            val = _unesc(km.group(2))
+            args[key] = int(val) if val.isdigit() else val
+        actions.append({"tool": tm.group(1), "args": args})
+    if say or actions:
+        return Plan(say=say, actions=actions, raw=text)
+    return None
 
 
 def _first_balanced_object(text: str) -> Optional[str]:

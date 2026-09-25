@@ -148,6 +148,7 @@ them because *there is no tool that can*:
 - 👁️ **All automation is visible** — typed keys, opened windows, narrated
   steps. No silent background control.
 - 🎯 **media_play**: “play X on Spotify/YouTube” runs as ONE verified ritual — focus the app, wait for it to load, search, read the on-screen results, and click the row that actually matches the song/artist/channel (never a random first song or bare Play button); if nothing matches it shows what it saw and retries smarter instead of giving up.
+- 🔁 **Self-repairing plans**: if the local model emits slightly broken JSON, JARVIS repairs it and runs the intended actions instead of dumping raw text; `focus_window` switches between your apps visibly, in real time.
 - 🛑 **Abort** is always one click/keypress away.
 
 Sensitive confirmation dialogs show exactly what will happen *before* it

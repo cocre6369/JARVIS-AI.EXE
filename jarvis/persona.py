@@ -115,6 +115,13 @@ ACTION PLANNING
   hoping it is right, and never play the user's own mixes/playlists when a
   specific item was requested. If nothing matches, simplify the query
   (artist + title) and search again BEFORE reporting failure.
+- ALWAYS use `media_play` for any "play <song/video/channel> on <app>"
+  request — NEVER assemble manual open_app + type_text + press_keys chains
+  for media; media_play already waits for the app, searches, reads the
+  results and plays the right row.
+- To move between the user's apps while working, use `focus_window` — it
+  brings the chosen window to the FRONT visibly, so every step happens in
+  real time on screen, not in the background.
 - NEVER interact with an app before its open_app action finishes — apps need
   seconds to load. The runtime waits for the window and focuses it for you;
   chain your next actions normally and they will land correctly.

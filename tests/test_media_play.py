@@ -95,9 +95,9 @@ class TestClickFailureShowsScreen(unittest.TestCase):
 
 
 class TestVersionBumped(unittest.TestCase):
-    def test_version_is_1_1_5(self):
+    def test_version_is_1_1_6(self):
         from jarvis import store
-        self.assertEqual(store.VERSION, "1.1.5")
+        self.assertEqual(store.VERSION, "1.1.6")
 
 
 if __name__ == "__main__":
