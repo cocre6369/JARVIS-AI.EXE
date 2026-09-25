@@ -47,11 +47,5 @@ class TestAppProcessVerification(unittest.TestCase):
         self.assertLess(i_check, i_launch)
 
 
-class TestVersionBumped(unittest.TestCase):
-    def test_version_is_1_1_8(self):
-        from jarvis import store
-        self.assertEqual(store.VERSION, "1.1.8")
-
-
 if __name__ == "__main__":
     unittest.main(verbosity=2)

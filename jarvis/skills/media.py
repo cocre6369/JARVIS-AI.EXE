@@ -114,45 +114,59 @@ def media_play(app: str = "spotify", query: str = "") -> str:
                 "install the desktop app — Jarvis automates the real app, "
                 "not a browser tab.")
 
-    # 2) Drive the app's OWN search — never the browser, never another app.
-    try:
-        apps.press_keys("ctrl+k")        # focus the app's search field
-        time.sleep(0.35)
-        apps.type_text(query)
-        time.sleep(0.15)
-        apps.press_keys("enter")
-    except Exception as exc:
-        return f"ERROR: could not drive {app_name}'s search: {exc}"
-
-    # 3) READ the screen until real results show up (adaptive, not a blind
-    #    sleep), then play the row that genuinely matches.
-    tokens = _tokens(query)
-    labels: List[str] = []
-    deadline = time.time() + 4.0
-    while True:
+    def search_and_pick(q: str) -> str:
+        """Search q in the app's OWN field, READ the screen until real
+        results appear, and double-click the row that truly matches.
+        Returns the success message, or '' when nothing clearly matched."""
         try:
-            labels = _visible_labels(80)
-        except Exception:
-            labels = []
-        if labels or time.time() > deadline:
-            break                        # chrome is filtered at the source
-        time.sleep(0.4)
-    best_label, best = "", 0.0
-    for label in labels:
-        s = _row_score(label, tokens)
-        if s > best:
-            best_label, best = label, s
-    if best_label and best >= 0.5:
-        for _attempt in range(2):        # one re-find after the UI settles
-            ctrl, score = _find_element(best_label)
-            if ctrl is not None and _play_row(ctrl):
-                time.sleep(1.2)          # let playback actually start
-                return (f"Playing “{best_label}” in {canon.title()} — "
-                        f"matched {max(best, score):.0%} of “{query}”.")
-            time.sleep(0.6)
+            apps.press_keys("ctrl+k")    # focus the app's search field
+            time.sleep(0.35)
+            apps.type_text(q)
+            time.sleep(0.15)
+            apps.press_keys("enter")
+        except Exception as exc:
+            return f"ERROR: could not drive {app_name}'s search: {exc}"
+        toks = _tokens(q)
+        labels: List[str] = []
+        deadline = time.time() + 4.0
+        while True:
+            try:
+                labels = _visible_labels(80)
+            except Exception:
+                labels = []
+            if labels or time.time() > deadline:
+                break                    # chrome is filtered at the source
+            time.sleep(0.4)
+        best_label, best = "", 0.0
+        for label in labels:
+            sc = _row_score(label, toks)
+            if sc > best:
+                best_label, best = label, sc
+        if best_label and best >= 0.5:
+            for _attempt in range(2):    # one re-find after the UI settles
+                ctrl, score = _find_element(best_label)
+                if ctrl is not None and _play_row(ctrl):
+                    time.sleep(1.2)      # let playback actually start
+                    return (f"Playing “{best_label}” in {canon.title()} — "
+                            f"matched {max(best, score):.0%} of “{q}”.")
+                time.sleep(0.6)
+        return ""
 
-    # 4) No confident match: report what WAS on screen so the brain can pick
-    #    an exact label or simplify the query — never guess-click.
+    # 2) Search + read + play — and if the full request matched nothing,
+    #    SIMPLIFY the query (its first meaningful words) and try once more
+    #    before ever reporting failure.
+    result = search_and_pick(query)
+    if result:
+        return result
+    tokens = _tokens(query)
+    if len(tokens) > 2:
+        result = search_and_pick(" ".join(tokens[:2]))
+        if result:
+            return result + " (found it after simplifying the search)"
+
+    # 4) Still nothing after both attempts: report what WAS on screen so
+    #    the brain can pick an exact label — never a guess-click.
+    labels = _visible_labels(80)
     if not labels:
         hint = ("Only window controls were visible — the results may still "
                 "be loading. Wait a moment, then call screen_state and "

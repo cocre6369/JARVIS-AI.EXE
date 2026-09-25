@@ -141,6 +141,32 @@ def _first_balanced_object(text: str) -> Optional[str]:
     return None
 
 
+def effective_system_prompt(model: str, prompt: str) -> str:
+    """qwen3 models think out loud by default, which wastes seconds and
+    leaks reasoning into plans; the /no_think soft switch stops that."""
+    m = (model or "").strip().lower()
+    if m.startswith("qwen3") and "/no_think" not in prompt:
+        return prompt.rstrip() + "\n\n/no_think"
+    return prompt
+
+
+_PLAN_NUDGE = ('That was not a valid plan. Reply with ONLY the JSON plan: '
+               '{{"say": "...", "actions": [{{"tool": "...", '
+               '"args": {{...}}}}]}} — no other text.')
+
+
+def _looks_like_plan(text: str) -> bool:
+    return '"tool"' in text or '"actions"' in text or '"say"' in text
+
+
+def _is_well_formed_json(text: str) -> bool:
+    cand = _first_balanced_object(text) or text.strip()
+    try:
+        return isinstance(json.loads(cand), dict)
+    except ValueError:
+        return False
+
+
 class Brain:
     """Owns the conversation history and produces action plans via Ollama."""
 
@@ -151,12 +177,15 @@ class Brain:
         self.client = client
         self.settings = settings
         self.tool_catalog = tool_catalog
-        self.system_prompt = build_system_prompt(settings, tool_catalog,
-                                                 project_prompt)
+        self.system_prompt = effective_system_prompt(
+            settings.model,
+            build_system_prompt(settings, tool_catalog, project_prompt))
         self.history: List[Dict[str, str]] = []
 
     def reload(self) -> None:
-        self.system_prompt = build_system_prompt(self.settings, self.tool_catalog)
+        self.system_prompt = effective_system_prompt(
+            self.settings.model,
+            build_system_prompt(self.settings, self.tool_catalog))
 
     def restore(self, messages: List[Dict[str, str]]) -> None:
         self.history = [m for m in messages if m.get("role") in ("user", "assistant")
@@ -165,17 +194,28 @@ class Brain:
     def export(self) -> List[Dict[str, str]]:
         return [{"role": m["role"], "content": m["content"]} for m in self.history]
 
-    def ask(self, user_text: str) -> Plan:
-        self.history.append({"role": "user", "content": user_text})
+    def _complete_plan(self) -> Plan:
+        """Complete + parse; if the model fumbled the plan FORMAT, give it
+        ONE corrective retry instead of dead-ending the user."""
         reply = self._complete()
         plan = parse_plan(reply)
+        if (not plan.actions and _looks_like_plan(reply)
+                and not _is_well_formed_json(reply)):
+            self.history.append({"role": "user", "content": _PLAN_NUDGE})
+            plan2 = parse_plan(self._complete())
+            if plan2.actions or not plan.say:
+                plan = plan2
+        return plan
+
+    def ask(self, user_text: str) -> Plan:
+        self.history.append({"role": "user", "content": user_text})
+        plan = self._complete_plan()
         self._remember(plan)
         return plan
 
     def follow_up(self, results: List[Dict[str, Any]]) -> Plan:
         self.history.append({"role": "user", "content": tool_results_message(results)})
-        reply = self._complete()
-        plan = parse_plan(reply)
+        plan = self._complete_plan()
         self._remember(plan)
         return plan
 
