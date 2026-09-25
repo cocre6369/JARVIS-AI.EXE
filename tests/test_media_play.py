@@ -20,6 +20,23 @@ class TestMediaPlay(unittest.TestCase):
         from jarvis import skills
         skills.load_all()
         self.assertIn("media_play", skills.build_catalog())
+        # success must FINISH without an extra AI round-trip (user: "it
+        # takes years to do stuff")
+        self.assertFalse(skills.get_tool("media_play").returns_data)
+
+    def test_chrome_never_pollutes_results(self):
+        from jarvis.skills.click import _is_chrome
+        self.assertTrue(_is_chrome("Minimise"))
+        self.assertTrue(_is_chrome("restore"))
+        self.assertFalse(_is_chrome("Violent Crimes"))
+        self.assertFalse(_is_chrome("Kanye West"))
+
+    def test_plays_with_double_click(self):
+        # a single click usually only SELECTS a result row — playback needs
+        # a double-click
+        import inspect
+        from jarvis.skills import media
+        self.assertIn("DoubleClick", inspect.getsource(media._play_row))
 
     def test_needs_a_query(self):
         from jarvis.skills.media import media_play
@@ -78,9 +95,9 @@ class TestClickFailureShowsScreen(unittest.TestCase):
 
 
 class TestVersionBumped(unittest.TestCase):
-    def test_version_is_1_1_4(self):
+    def test_version_is_1_1_5(self):
         from jarvis import store
-        self.assertEqual(store.VERSION, "1.1.4")
+        self.assertEqual(store.VERSION, "1.1.5")
 
 
 if __name__ == "__main__":

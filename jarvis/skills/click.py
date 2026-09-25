@@ -22,11 +22,19 @@ from typing import List, Optional, Tuple
 from . import register
 
 _SEARCH_BUDGET_S = 5.0
-_MAX_NODES = 500
+_MAX_NODES = 2500
 
 
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").strip().lower())
+
+# Window buttons that exist on every title bar — never search results.
+_CHROME = {"minimise", "minimize", "maximise", "maximize", "restore",
+           "close", "back", "forward"}
+
+
+def _is_chrome(label: str) -> bool:
+    return _norm(label) in _CHROME
 
 
 def _find_element(name: str, timeout: float = _SEARCH_BUDGET_S):
@@ -48,7 +56,7 @@ def _find_element(name: str, timeout: float = _SEARCH_BUDGET_S):
     deadline = time.time() + timeout
     try:
         for control, _depth in auto.WalkControl(window, includeTop=False,
-                                                maxDepth=8):
+                                                maxDepth=12):
             seen += 1
             if seen > _MAX_NODES or time.time() > deadline:
                 break
@@ -273,15 +281,16 @@ def screen_state(max_items: int = 60) -> str:
                     .replace("Control", "").strip()
             except Exception:
                 continue
-            if name and 0 < len(name) <= 60 and depth > 0:
+            if (name and 0 < len(name) <= 60 and depth > 0
+                    and not _is_chrome(name)):
                 lines.append(f"{'  ' * min(depth, 3)}[{ctype}] {name}")
                 count += 1
             try:
                 kids = elem.GetChildren() or []
             except Exception:
                 kids = []
-            if depth < 4:
-                for k in kids[:12]:
+            if depth < 6:
+                for k in kids[:16]:
                     queue.append((k, depth + 1))
         if count == 0:
             lines.append("(no labelled controls found — the window may "
@@ -307,7 +316,7 @@ def _visible_labels(max_items: int = 25) -> List[str]:
         seen = 0
         deadline = time.time() + _SEARCH_BUDGET_S
         for control, _depth in auto.WalkControl(window, includeTop=False,
-                                                maxDepth=8):
+                                                maxDepth=12):
             seen += 1
             if seen > 400 or time.time() > deadline or len(out) >= max_items:
                 break
@@ -315,7 +324,8 @@ def _visible_labels(max_items: int = 25) -> List[str]:
                 name = (control.Name or "").strip()
             except Exception:
                 continue
-            if name and 0 < len(name) <= 60 and name not in out:
+            if (name and 0 < len(name) <= 60 and name not in out
+                    and not _is_chrome(name)):
                 out.append(name)
     except Exception:
         pass
