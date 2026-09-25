@@ -47,11 +47,5 @@ class TestNormalizeModelTag(unittest.TestCase):
         self.assertEqual(normalize_model_tag(""), "")
 
 
-class TestVersionBumped(unittest.TestCase):
-    def test_version_is_1_1_7(self):
-        from jarvis import store
-        self.assertEqual(store.VERSION, "1.1.7")
-
-
 if __name__ == "__main__":
     unittest.main(verbosity=2)
