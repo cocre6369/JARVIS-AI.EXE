@@ -1,0 +1,141 @@
+name: Build JARVIS-AI.exe
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Also publish the .exe files to the 'nightly' release"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: JARVIS-AI
+            slim: "0"
+            req: requirements-full.txt
+          - name: JARVIS-AI-Lite
+            slim: "1"
+            req: requirements.txt
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller pillow
+          python -m pip install -r ${{ matrix.req }}
+
+      - name: Run unit tests + undefined-name lint
+        shell: bash
+        run: |
+          pip install pyflakes -q
+          if OUT=$(python -m unittest discover -s tests -v 2>&1); then
+            echo "$OUT" | tail -3
+          else
+            echo "$OUT" | tail -40
+            echo "$OUT" | grep -E "^(FAIL|ERROR):" | head -20 | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          fi
+
+      - name: Generate window icon
+        run: python scripts/make_icon.py
+
+      - name: Build ${{ matrix.name }}.exe
+        env:
+          JARVIS_SLIM: ${{ matrix.slim }}
+          JARVIS_NAME: ${{ matrix.name }}
+        run: pyinstaller JARVIS.spec --noconfirm --clean
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/${{ matrix.name }}.exe
+          if-no-files-found: error
+
+  release:
+    name: Publish nightly release
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish .exe files to the nightly release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          exec 2>&1
+          {
+            echo "== artifact tree =="
+            find dist -type f -print
+            ls -lh $(find dist -type f -name '*.exe' -print)
+            echo "== gh version ==" && gh --version
+            FILES=$(find dist -type f -name '*.exe' -print | sort)
+            echo "== exe files ==" && echo "$FILES"
+            COUNT=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/nightly" --jq '.assets | length' 2>/dev/null || echo 0)
+            if [ "$COUNT" -ge 1 ]; then
+              # healthy release — replace assets in place
+              echo "healthy release with $COUNT assets, overwriting"
+            else
+              # no visible assets: either fresh repo or zombie 'starter' rows
+              # that reserve names without completing — recreate clean.
+              echo "no visible assets — recreating release"
+              gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+              gh release create nightly --repo "$GITHUB_REPOSITORY" \
+                --target "$GITHUB_SHA" --prerelease \
+                --title "J.A.R.V.I.S. — Nightly Build" --notes "Build in progress…"
+            fi
+            if [ -n "$FILES" ]; then
+              for f in $FILES; do
+                echo "-- uploading $f"
+                gh release upload nightly --repo "$GITHUB_REPOSITORY" --clobber "$f"
+                echo "upload exit: $? for $f"
+              done
+            else
+              echo "NO EXE FILES FOUND"
+            fi
+            echo "== assets now =="
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/nightly" \
+              --jq '{assets: [.assets[] | {name, size}]}'
+          } > /tmp/diag.txt 2>&1
+          cat /tmp/diag.txt
+          # clean, user-facing notes with collapsed build telemetry
+          gh release edit nightly --repo "$GITHUB_REPOSITORY" \
+            --title "J.A.R.V.I.S. — Nightly Build" \
+            --notes "$(printf '%s\n' \
+              "Standalone Windows builds of **J.A.R.V.I.S.** — the Iron Man themed, fully local, Ollama-powered desktop assistant." \
+              "" "### Downloads" \
+              "- **JARVIS-AI.exe** — full build (Whisper voice recognition bundled)" \
+              "- **JARVIS-AI-Lite.exe** — lite build (Windows speech recognition)" \
+              "" "### Quick start" \
+              "1. Install [Ollama](https://ollama.com/download) and run: \`ollama pull qwen3:8b\`" \
+              "2. Download the .exe above and double-click it" \
+              "3. Follow the first-run wizard (model pick, voice test, safety limits)" \
+              "" "Guardrails are enforced in code: no logins, no credentials, confirmations before sensitive actions, STOP always available." \
+              "" "Built from commit \`$GITHUB_SHA\`" \
+              "" "<details><summary>Build telemetry</summary>" "" '```' "$(tail -c 1600 /tmp/diag.txt)" '```' "" "</details>")" \
+            || echo "notes edit failed"
+          # hard-fail unless at least one asset is attached
+          COUNT=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/nightly" --jq '.assets | length')
+          echo "asset count: $COUNT"
+          [ "$COUNT" -ge 1 ]
