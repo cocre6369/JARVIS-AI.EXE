@@ -307,6 +307,16 @@ class JarvisHUD(tk.Tk):
                                    highlightbackground=theme.CYAN_DIM, padx=8)
         self.state_chip.pack(side="right", padx=8, pady=6)
 
+        # Glanceable "what is JARVIS doing right now" strip — every action
+        # lands here in large text so the app is never a black box.
+        self.step_strip = tk.Label(
+            self, text="●  Standing by — every action JARVIS takes "
+                       "will show here", font=theme.FONT_UI_B,
+            bg=theme.PANEL, fg=theme.CYAN, anchor="w",
+            highlightthickness=1, highlightbackground=theme.BORDER)
+        self.step_strip.pack(fill="x")
+        self._last_narration = ""
+
         menu = tk.Menu(self, tearoff=0, bg=theme.PANEL, fg=theme.TEXT,
                        activebackground=theme.CYAN_DIM,
                        activeforeground=theme.WHITE, relief="flat")
@@ -444,12 +454,17 @@ class JarvisHUD(tk.Tk):
                                   highlightbackground=color)
         self.state_label.configure(text=label, fg=color)
         self.reactor.set_state(state)
+        if state in ("IDLE", "STANDBY") and self._last_narration:
+            self.step_strip.configure(text=f"✓  {self._last_narration}")
 
     def set_level(self, level: float) -> None:
         self.reactor.set_level(level)
 
     def narrate(self, text: str) -> None:
         self.narration.configure(text=text)
+        if text:
+            self._last_narration = text
+            self.step_strip.configure(text=f"▶  {text}")
 
     def add_message(self, who: str, text: str) -> None:
         stamp = time.strftime("%H:%M")

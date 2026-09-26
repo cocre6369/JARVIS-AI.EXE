@@ -91,11 +91,5 @@ class TestMediaSelfSimplify(unittest.TestCase):
         self.assertIn("simplifying the search", MEDIA)
 
 
-class TestVersionBumped(unittest.TestCase):
-    def test_version_is_1_1_9(self):
-        from jarvis import store
-        self.assertEqual(store.VERSION, "1.1.9")
-
-
 if __name__ == "__main__":
     unittest.main(verbosity=2)

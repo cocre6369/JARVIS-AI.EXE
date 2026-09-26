@@ -150,6 +150,17 @@ def effective_system_prompt(model: str, prompt: str) -> str:
     return prompt
 
 
+_AGENCY_NUDGE = ('The user asked you to ACT on the machine. Do not '
+                 'describe or promise — reply with ONLY the JSON plan and '
+                 'use catalog tools now: {{"say": "...", "actions": '
+                 '[{{"tool": "...", "args": {{...}}}}]}}.')
+
+_ACTION_RE = re.compile(
+    r"\b(open|play|launch|start|close|quit|exit|search|type|click|press|"
+    r"volume|mute|unmute|shutdown|restart|minimi[sz]e|maximi[sz]e|"
+    r"switch to|focus)\b", re.IGNORECASE)
+
+
 _PLAN_NUDGE = ('That was not a valid plan. Reply with ONLY the JSON plan: '
                '{{"say": "...", "actions": [{{"tool": "...", '
                '"args": {{...}}}}]}} — no other text.')
@@ -194,14 +205,19 @@ class Brain:
     def export(self) -> List[Dict[str, str]]:
         return [{"role": m["role"], "content": m["content"]} for m in self.history]
 
-    def _complete_plan(self) -> Plan:
-        """Complete + parse; if the model fumbled the plan FORMAT, give it
-        ONE corrective retry instead of dead-ending the user."""
+    def _complete_plan(self, user_text: str = "") -> Plan:
+        """Complete + parse; if the model fumbled the plan FORMAT or merely
+        TALKED about an actionable request, give it ONE corrective retry
+        instead of dead-ending the user."""
         reply = self._complete()
         plan = parse_plan(reply)
-        if (not plan.actions and _looks_like_plan(reply)
-                and not _is_well_formed_json(reply)):
-            self.history.append({"role": "user", "content": _PLAN_NUDGE})
+        wants_action = (bool(user_text) and len(user_text) < 220
+                        and bool(_ACTION_RE.search(user_text)))
+        needs_format = (not plan.actions and _looks_like_plan(reply)
+                        and not _is_well_formed_json(reply))
+        if not plan.actions and (needs_format or wants_action):
+            nudge = _PLAN_NUDGE if needs_format else _AGENCY_NUDGE
+            self.history.append({"role": "user", "content": nudge})
             plan2 = parse_plan(self._complete())
             if plan2.actions or not plan.say:
                 plan = plan2
@@ -209,7 +225,7 @@ class Brain:
 
     def ask(self, user_text: str) -> Plan:
         self.history.append({"role": "user", "content": user_text})
-        plan = self._complete_plan()
+        plan = self._complete_plan(user_text)
         self._remember(plan)
         return plan
 

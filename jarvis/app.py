@@ -140,6 +140,9 @@ class JarvisCore:
 
             if not plan.say and not all_results:
                 self.speak("Nothing to report.")
+            from .ui import tray as tray_mod
+            tray_mod.notify("J.A.R.V.I.S.",
+                            plan.say or "Task complete.")
         except OllamaError as exc:
             self.log("error", str(exc))
             self.call(self.ui.set_state, "ERROR")
@@ -148,6 +151,8 @@ class JarvisCore:
             self.log("error", traceback.format_exc(limit=3))
             self.call(self.ui.set_state, "ERROR")
             self.speak(f"A glitch in the matrix, I'm afraid: {exc}")
+            from .ui import tray as tray_mod
+            tray_mod.notify("J.A.R.V.I.S. — error", str(exc)[:100])
         finally:
             self.session.save_messages(self.brain.export())
             self.busy = False

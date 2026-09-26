@@ -44,6 +44,17 @@ def start_tray(hud) -> bool:
     return True
 
 
+def notify(title: str, text: str) -> bool:
+    """Best-effort balloon notification, visible from ANY app."""
+    try:
+        if _tray is not None and hasattr(_tray, "notify"):
+            _tray.notify(text or "", title or "J.A.R.V.I.S.")
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def stop_tray() -> None:
     global _tray
     if _tray is not None:

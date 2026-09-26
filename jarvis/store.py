@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 APP_NAME = "JARVIS"
 APP_TITLE = "J.A.R.V.I.S."
 APP_SUBTITLE = "Just A Rather Very Intelligent System"
-VERSION = "1.1.9"
+VERSION = "1.2.0"
 
 
 def normalize_model_tag(tag: str) -> str:
